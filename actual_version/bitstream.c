@@ -1,4 +1,4 @@
-
+#include "bitstream.h"
 
 //data is data stream to insert into, bits is literal bits, num_bits is number of bits (<=8)
 //position is position in data stream in bits
