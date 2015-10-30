@@ -8,6 +8,7 @@
 #include "packet.h"
 #include "datatypes.h"
 #include "hamming.h"
+#include "interleave.h"
 
 uint8_t test_data[64];
 
@@ -68,27 +69,27 @@ float pass_rate(int num_tests, int num_errors)
     for(unsigned int i = 0; i < 64; i++)
       test_data[i] = rand();
 
-      raw_data rd;
-      rd.length = 64;
-      rd.data = test_data;
-      packet p, q;
+    raw_data rd;
+    rd.length = 64;
+    rd.data = test_data;
+    packet p, q;
 
-      //make packet
-      p = make_packet(rd);
+    //make packet
+    p = make_packet(rd);
 
-      //encode packet (using Hamming)
-      encoded_packet ep = encode(&p);
+    //encode packet (using Hamming)
+    encoded_packet ep = encode(&p);
 
-      //simulate lossy trasmission and receiving
-      insert_errors(ep.data, ep.length, num_errors);
+    //simulate lossy trasmission and receiving
+    insert_errors(ep.data, ep.length, num_errors);
 
-      //decode received data
-      q = decode(ep, NULL);
+    //decode received data
+    q = decode(ep, NULL);
 
-      free(ep.data);
+    free(ep.data);
 
-      if(!memcmp(&p, &q, sizeof(packet)))
-        successes++;
+    if(!memcmp(&p, &q, sizeof(packet)))
+      successes++;
   }
   return (float)successes / (float)num_tests;
 }
