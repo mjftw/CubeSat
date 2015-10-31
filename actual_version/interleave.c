@@ -1,6 +1,7 @@
 #include "interleave.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include "bitstream.h"
 
 uint8_t get_bit(uint8_t byte, int position)
@@ -21,7 +22,7 @@ void interleave(raw_data rd)
   {
     for(unsigned int j = 0; j < rd.length; j++)  //in each byte
     {
-      insert_bits_at_position(rd2.data, get_bit(rd.data[j], i), 1, &position);
+      insert_bits_at_position(rd2.data, get_bit(rd.data[j], 7 - i), 1, &position);
     }
   }
   memcpy(rd.data, rd2.data, rd.length);
@@ -37,14 +38,21 @@ void deinterleave(raw_data rd)
     rd2.data[i] = 0x00;
 
   int position = 0;
+  int position2 = 0;
   for(unsigned int i = 0; i < rd.length * 8; i++)  //for each bit
   {
     int a = i / 8;
     int b = i % 8;
-    position = 7 - a + b * rd.length;
+    //position = i;
+    //printf("a = %i, b = %i\n", a, b);
+    //printf("position = %i\n", position);
+    //printf("%i, %i, ", position, position2);
+    position = a + b * rd.length;
+    uint8_t bit = get_bits_from_position(rd.data, 1, &position);
     //bit position is 7 - b because bit 0 is LSB (leftmost) and we want to read
     //right to left
-    insert_bits_at_position(rd2.data, get_bit(rd.data[a], 7 - b), 1, &position);
+    insert_bits_at_position(rd2.data, bit, 1, &position2);
+    //printf("%i\n", bit);
   }
   memcpy(rd.data, rd2.data, rd.length);
   free(rd2.data);

@@ -9,6 +9,7 @@
 #include "datatypes.h"
 #include "hamming.h"
 #include "interleave.h"
+#include "bitstream.h"
 
 uint8_t test_data[64];
 
@@ -40,12 +41,43 @@ char insert_error(char input, int position)
 
 void insert_errors(char* block, int length, int num_errors)
 {
-	//currently no protection against flipping the same bit twice, so should not be used to test bit error rates yet.
-  int* error_positions = (int*)malloc(num_errors * sizeof(int));
+  //int* error_positions = (int*)malloc(num_errors * sizeof(int));
 	for (unsigned int i = 0; i < num_errors; i++)
 	{
 		int error_position = random(0, length * 8);
-    while(1)
+    /*while(1)
+    {
+      int j;
+      for(j = 0; j < i; j++)
+      {
+        if(error_positions[j] == error_position)
+          error_position = random(0, length * 8);
+      }
+      if(j == i)  //all tested, no errors are at same position
+      {
+        printf("break\n");
+        break;
+      }
+    }*/
+		block[error_position / 8] = insert_error(block[error_position / 8], error_position % 8);
+	}
+  //free(error_positions);
+}
+
+//does the same as insert errors, but has a half chance of inserting one of the
+//remaining errors next to an existing one
+void insert_errors_dependent(char* block, int length, int num_errors)
+{
+  //int* error_positions = (int*)malloc(num_errors * sizeof(int));
+  int last_error_position = -1;
+  for (unsigned int i = 0; i < num_errors; i++)
+  {
+    int error_position;  //half chance of being inserted next to last error
+    if(last_error_position == -1 || rand() % 2)  //half chance
+      error_position = random(0, length * 8);
+    else
+      error_position = last_error_position + 1;
+    /*while(1)
     {
       int j;
       for(j = 0; j < i; j++)
@@ -55,19 +87,21 @@ void insert_errors(char* block, int length, int num_errors)
       }
       if(j == i)  //all tested, no errors are at same position
         break;
-    }
-		block[error_position / 8] = insert_error(block[error_position / 8], error_position % 8);
-	}
-  free(error_positions);
+    }*/
+    block[error_position / 8] = insert_error(block[error_position / 8], error_position % 8);
+    last_error_position = error_position;
+  }
+  //free(error_positions);
 }
 
-float pass_rate(int num_tests, int num_errors)
+//error inserter is a function to insert errors, so it's easy to change out
+float pass_rate(int num_tests, int num_errors, void (*error_inserter)(char*, int, int), int interleave_data)
 {
   int successes = 0;
   for(unsigned int i = 0; i < num_tests; i++)
   {
     for(unsigned int i = 0; i < 64; i++)
-      test_data[i] = rand();
+      test_data[i] = 255;
 
     raw_data rd;
     rd.length = 64;
@@ -80,12 +114,17 @@ float pass_rate(int num_tests, int num_errors)
     //encode packet (using Hamming)
     encoded_packet ep = encode(&p);
 
+    if(interleave_data)
+      interleave(ep);
+
     //simulate lossy trasmission and receiving
-    insert_errors(ep.data, ep.length, num_errors);
+    error_inserter(ep.data, ep.length, num_errors);
 
     //decode received data
-    q = decode(ep, NULL);
+    if(interleave_data)
+      deinterleave(ep);
 
+    q = decode(ep, NULL);
     free(ep.data);
 
     if(!memcmp(&p, &q, sizeof(packet)))
@@ -96,11 +135,91 @@ float pass_rate(int num_tests, int num_errors)
 
 int main()
 {
+  //This part tests bitstreams
+  /*for(int j = 0; j < 100; j++)
+  {
+    uint8_t* data = (uint8_t*)malloc(256);
+    for(unsigned int i = 0; i < 256; i++)
+      data[i] = i;
+
+    uint8_t* data2 = (uint8_t*)malloc(256);
+    for(unsigned int i = 0; i < 256; i++)
+      data2[i] = 0;
+
+    int position = 0, position2 = 0;
+    for(unsigned int i = 0; position < 255 * 8; i++)
+    {
+      int check_size = rand() % 8 + 1;
+      uint8_t bits = get_bits_from_position(data, check_size, &position);
+      insert_bits_at_position(data2, bits, check_size, &position2);
+    }
+
+    //printf("check_size = %i\n", check_size);
+    if(!memcmp(data, data2, 128))
+    {
+    }
+    else
+    {
+      printf("failure\n");
+      for(unsigned int i = 0; i < 256; i++)
+        printf("%x ", data2[i]);
+    }
+    //printf("\n\n");
+
+    free(data);
+    free(data2);
+  }
+
+  //for(unsigned int i = 0; i < 256; i++)
+  //  printf("%x ", data2[i]);
+  //printf("\n");
+
+  return 0;*/
+
+
+  //This part tests interleaving
+  /*char message[50];
+  char check_message[50];
+  for(unsigned int i = 0; i < 50; i++)
+    message[i] = rand();
+  memcpy(check_message, message, 50);
+
+  raw_data rd;
+  rd.length = 50;
+  rd.data = message;
+
+  for(unsigned int i = 0; i < 50; i++)
+    printf("%x ", rd.data[i] & 0xff);
+  printf("\n");
+
+  interleave(rd);
+
+  for(unsigned int i = 0; i < 50; i++)
+    printf("%x ", rd.data[i] & 0xff);
+  printf("\n");
+
+  deinterleave(rd);
+
+  for(unsigned int i = 0; i < 50; i++)
+    printf("%x ", rd.data[i] & 0xff);
+  printf("\n");
+
+  if(!memcmp(message, check_message, 50))
+    printf("success!");
+  else
+    printf("Failure!");
+  return 0;*/
+
   srand(time(NULL));
 
+  printf("num_errors,MPR_independent,MPR_dependent,MPR_independent_interleave,MPR_dependent_interleave\n");
   for(int errors = 0; errors <= 100; errors++)
   {
-    printf("%i,%f\n", errors, pass_rate(10000, errors));
+    printf("%i,%f,%f,%f,%f\n", errors,
+      pass_rate(10000, errors, insert_errors, 0),
+      pass_rate(10000, errors, insert_errors_dependent, 0),
+      pass_rate(10000, errors, insert_errors, 1),
+      pass_rate(10000, errors, insert_errors_dependent, 1));
   }
   return 0;
 }

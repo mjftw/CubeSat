@@ -63,7 +63,6 @@ raw_data decode_block(raw_data rd, int* bit_errors)
 {
   //counting the bit_errors doesn't work currently, need another function to do it.
   //Not too difficult using the lookup table writing funciton in ECC beginning
-
   raw_data ret;
   ret.length = (int)((float)rd.length / 7.0 * 4.0);
   ret.data = (uint8_t*)malloc(ret.length);
