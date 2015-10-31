@@ -34,6 +34,12 @@ int random(int min, int max)
 	return rand() % (max - min) + min;
 }
 
+//say fraction = 1/2 returns 1 half the time and 0 half the time
+int chance(float fraction)
+{
+  return ((float)rand() / RAND_MAX) < fraction;
+}
+
 char insert_error(char input, int position)
 {
 	return (input ^ (1 << position));
@@ -69,14 +75,16 @@ void insert_errors(char* block, int length, int num_errors)
 void insert_errors_dependent(char* block, int length, int num_errors)
 {
   //int* error_positions = (int*)malloc(num_errors * sizeof(int));
-  int last_error_position = -1;
+  int last_error_position = random(0, length * 8);
   for (unsigned int i = 0; i < num_errors; i++)
   {
     int error_position;  //half chance of being inserted next to last error
-    if(last_error_position == -1 || rand() % 2)  //half chance
-      error_position = random(0, length * 8);
-    else
+    if(chance(1.0/2.0))
       error_position = last_error_position + 1;
+    else
+      error_position = random(0, length * 8);
+    if(error_position >= length * 8)
+      error_position = random(0, length * 8);
     /*while(1)
     {
       int j;

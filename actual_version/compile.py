@@ -8,7 +8,7 @@ import sys
 
 
 compiler = "gcc"
-flags = ["-std=c99", "-Werror"]
+flags = ["-std=c99", "-Werror", "-O3"]
 
 if __name__ == "__main__":
     if(len(sys.argv) == 2):

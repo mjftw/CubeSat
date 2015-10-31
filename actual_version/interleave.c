@@ -43,16 +43,12 @@ void deinterleave(raw_data rd)
   {
     int a = i / 8;
     int b = i % 8;
-    //position = i;
-    //printf("a = %i, b = %i\n", a, b);
-    //printf("position = %i\n", position);
-    //printf("%i, %i, ", position, position2);
+
     position = a + b * rd.length;
     uint8_t bit = get_bits_from_position(rd.data, 1, &position);
     //bit position is 7 - b because bit 0 is LSB (leftmost) and we want to read
     //right to left
     insert_bits_at_position(rd2.data, bit, 1, &position2);
-    //printf("%i\n", bit);
   }
   memcpy(rd.data, rd2.data, rd.length);
   free(rd2.data);
