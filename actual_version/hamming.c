@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "bitstream.h"
+#include "memory_tracker.h"
 
 //encodes 4 bits to 7 using Hamming(4,7) ECC
 uint8_t hamming47_lookup(uint8_t input)
@@ -44,7 +45,7 @@ raw_data encode_block(raw_data rd)
   if(bytes_needed != (float)((int)bytes_needed));  //test if it fits exactly
     bytes_needed += 1;
   ret.length = (int)bytes_needed;
-  ret.data = (uint8_t*)malloc(ret.length);
+  ret.data = (uint8_t*)alloc_named(ret.length, "encode_block ret.data");
   for(unsigned int i = 0; i < ret.length; i++)
     ret.data[i] = 0;
 
@@ -65,7 +66,7 @@ raw_data decode_block(raw_data rd, int* bit_errors)
   //Not too difficult using the lookup table writing funciton in ECC beginning
   raw_data ret;
   ret.length = (int)((float)rd.length / 7.0 * 4.0);
-  ret.data = (uint8_t*)malloc(ret.length);
+  ret.data = (uint8_t*)alloc_named(ret.length * 2, "decode_block ret.data");
   for(unsigned int i = 0; i < ret.length; i++)
     ret.data[i] = 0;
 

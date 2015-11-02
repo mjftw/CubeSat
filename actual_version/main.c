@@ -10,6 +10,8 @@
 #include "hamming.h"
 #include "interleave.h"
 #include "bitstream.h"
+#include "convolute.h"
+#include "memory_tracker.h"
 
 uint8_t test_data[64];
 
@@ -133,7 +135,7 @@ float pass_rate(int num_tests, int num_errors, void (*error_inserter)(char*, int
       deinterleave(ep);
 
     q = decode(ep, NULL);
-    free(ep.data);
+    dealloc(ep.data);
 
     if(!memcmp(&p, &q, sizeof(packet)))
       successes++;
@@ -143,6 +145,55 @@ float pass_rate(int num_tests, int num_errors, void (*error_inserter)(char*, int
 
 int main()
 {
+  //this part tests memory_tracker
+  /*int* a[100];
+  for(unsigned int i = 0; i < 100; i++)
+  {
+    a[i] = (int*)alloc(rand() % 100);
+    printf("total_allocated_space = %i\n", allocated());
+    printf("peak_allocated_space = %i\n", peak_allocated());
+  }
+  for(unsigned int i = 0; i < 100; i++)
+  {
+    dealloc(a[i]);
+    printf("total_allocated_space = %i\n", allocated());
+    printf("peak_allocated_space = %i\n", peak_allocated());
+  }
+
+  return 0;*/
+
+
+  //this part tests convolution
+  /*raw_data rd;
+  int starting_length = 5;
+  rd.length = starting_length;
+  rd.data = (uint8_t*)malloc(starting_length);
+  for(unsigned int i = 0; i < starting_length; i++)
+    rd.data[i] = 0;
+  rd.data[0] = 0xb0;
+
+  for(unsigned int i = 0; i < rd.length; i++)
+    printf("%x ", rd.data[i]);
+  printf("\n");
+
+  raw_data returned = convolute(rd);
+
+  for(unsigned int i = 0; i < returned.length; i++)
+    printf("%x ", returned.data[i]);
+  printf("\n");
+
+  raw_data decoded = deconvolute(returned, NULL);
+
+  for(unsigned int i = 0; i < returned.length; i++)
+    printf("%x ", returned.data[i]);
+  printf("\n");
+
+  free(rd.data);
+  free(returned.data);
+  free(decoded.data);
+  return 0;*/
+
+
   //This part tests bitstreams
   /*for(int j = 0; j < 100; j++)
   {
@@ -221,13 +272,14 @@ int main()
   srand(time(NULL));
 
   printf("num_errors,MPR_independent,MPR_dependent,MPR_independent_interleave,MPR_dependent_interleave\n");
-  for(int errors = 0; errors <= 100; errors++)
+  for(int errors = 0; errors <= 10; errors++)
   {
     printf("%i,%f,%f,%f,%f\n", errors,
-      pass_rate(10000, errors, insert_errors, 0),
-      pass_rate(10000, errors, insert_errors_dependent, 0),
-      pass_rate(10000, errors, insert_errors, 1),
-      pass_rate(10000, errors, insert_errors_dependent, 1));
+      pass_rate(1000, errors, insert_errors, 0),
+      pass_rate(1000, errors, insert_errors_dependent, 0),
+      pass_rate(1000, errors, insert_errors, 1),
+      pass_rate(1000, errors, insert_errors_dependent, 1));
   }
+  print_memory_usage_stats();
   return 0;
 }

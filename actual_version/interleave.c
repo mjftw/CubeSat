@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "bitstream.h"
+#include "memory_tracker.h"
 
 uint8_t get_bit(uint8_t byte, int position)
 {
@@ -13,7 +14,7 @@ void interleave(raw_data rd)
 {
   raw_data rd2;
   rd2.length = rd.length;
-  rd2.data = (uint8_t*)malloc(rd2.length);
+  rd2.data = (uint8_t*)alloc_named(rd2.length, "interleave rd2.data");
   for(unsigned int i = 0; i < rd.length; i++)
     rd2.data[i] = 0x00;
 
@@ -26,14 +27,14 @@ void interleave(raw_data rd)
     }
   }
   memcpy(rd.data, rd2.data, rd.length);
-  free(rd2.data);
+  dealloc(rd2.data);
 }
 
 void deinterleave(raw_data rd)
 {
   raw_data rd2;
   rd2.length = rd.length;
-  rd2.data = (uint8_t*)malloc(rd2.length);
+  rd2.data = (uint8_t*)alloc_named(rd2.length, "deinterleave rd2.data");
   for(unsigned int i = 0; i < rd.length; i++)
     rd2.data[i] = 0x00;
 
@@ -51,5 +52,5 @@ void deinterleave(raw_data rd)
     insert_bits_at_position(rd2.data, bit, 1, &position2);
   }
   memcpy(rd.data, rd2.data, rd.length);
-  free(rd2.data);
+  dealloc(rd2.data);
 }

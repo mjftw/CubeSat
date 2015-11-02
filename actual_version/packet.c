@@ -7,6 +7,7 @@
 #include <stdio.h>
 
 #include "hamming.h"
+#include "memory_tracker.h"
 
 #define START_SEQUENCE 0x7d
 #define DEFAULT_ADDRESS 0x00
@@ -85,6 +86,6 @@ packet decode(encoded_packet p, int* bit_errors)
   raw_data rd = decode_block(p, bit_errors);
   packet ret;
   memcpy(&ret, rd.data, rd.length);
-  free(rd.data);
+  dealloc(rd.data);
   return ret;
 }
