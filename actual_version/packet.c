@@ -8,6 +8,7 @@
 
 #include "hamming.h"
 #include "memory_tracker.h"
+#include "convolute.h"
 
 #define START_SEQUENCE 0x7d
 #define DEFAULT_ADDRESS 0x00
@@ -77,13 +78,15 @@ encoded_packet encode(const packet* p)
   raw_data pkt;
   pkt.data = (uint8_t*)p;
   pkt.length = sizeof(packet);
-  ret = encode_block(pkt);
+  //ret = encode_block(pkt);
+  ret = convolute(pkt);
   return ret;
 }
 
 packet decode(encoded_packet p, int* bit_errors)
 {
-  raw_data rd = decode_block(p, bit_errors);
+  //raw_data rd = decode_block(p, bit_errors);
+  raw_data rd = deconvolute(p, bit_errors);
   packet ret;
   memcpy(&ret, rd.data, rd.length);
   dealloc(rd.data);

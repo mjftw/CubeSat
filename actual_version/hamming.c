@@ -49,7 +49,7 @@ raw_data encode_block(raw_data rd)
   for(unsigned int i = 0; i < ret.length; i++)
     ret.data[i] = 0;
 
-  int position = 0;  //position will be automatically changed by insert_bits_at_position
+  unsigned int position = 0;  //position will be automatically changed by insert_bits_at_position
   for(unsigned int i = 0; i < rd.length; i++)
   {
     uint8_t first = hamming47_lookup(rd.data[i] >> 4);
@@ -65,12 +65,12 @@ raw_data decode_block(raw_data rd, int* bit_errors)
   //counting the bit_errors doesn't work currently, need another function to do it.
   //Not too difficult using the lookup table writing funciton in ECC beginning
   raw_data ret;
-  ret.length = (int)((float)rd.length / 7.0 * 4.0);
-  ret.data = (uint8_t*)alloc_named(ret.length * 2, "decode_block ret.data");
+  ret.length = (int)((float)rd.length * 4.0 / 7.0) + 1;
+  ret.data = (uint8_t*)alloc_named(ret.length, "decode_block ret.data");
   for(unsigned int i = 0; i < ret.length; i++)
     ret.data[i] = 0;
 
-  int position = 0, decoded_position = 0;
+  unsigned int position = 0, decoded_position = 0;
   while(position / 8 < rd.length)
   {
     uint8_t encoded = get_bits_from_position(rd.data, 7, &position);

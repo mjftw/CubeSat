@@ -18,7 +18,7 @@ void interleave(raw_data rd)
   for(unsigned int i = 0; i < rd.length; i++)
     rd2.data[i] = 0x00;
 
-  int position = 0;
+  unsigned int position = 0;
   for(unsigned int i = 0; i < 8; i++)  //for each bit
   {
     for(unsigned int j = 0; j < rd.length; j++)  //in each byte
@@ -38,8 +38,8 @@ void deinterleave(raw_data rd)
   for(unsigned int i = 0; i < rd.length; i++)
     rd2.data[i] = 0x00;
 
-  int position = 0;
-  int position2 = 0;
+  unsigned int position = 0;
+  unsigned int position2 = 0;
   for(unsigned int i = 0; i < rd.length * 8; i++)  //for each bit
   {
     int a = i / 8;

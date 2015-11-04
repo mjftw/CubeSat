@@ -10,6 +10,8 @@ raw_data convolute(raw_data rd);
 //with expected count of bit errors
 raw_data deconvolute(raw_data rd, int* bit_error_count);
 
+unsigned int get_peak_num_paths_considered();
+void reset_peak_num_paths_considered();
 
 
 

@@ -47,7 +47,7 @@ char insert_error(char input, int position)
 	return (input ^ (1 << position));
 }
 
-void insert_errors(char* block, int length, int num_errors)
+void insert_errors(uint8_t* block, int length, int num_errors)
 {
   //int* error_positions = (int*)malloc(num_errors * sizeof(int));
 	for (unsigned int i = 0; i < num_errors; i++)
@@ -74,7 +74,7 @@ void insert_errors(char* block, int length, int num_errors)
 
 //does the same as insert errors, but has a half chance of inserting one of the
 //remaining errors next to an existing one
-void insert_errors_dependent(char* block, int length, int num_errors)
+void insert_errors_dependent(uint8_t* block, int length, int num_errors)
 {
   //int* error_positions = (int*)malloc(num_errors * sizeof(int));
   int last_error_position = random(0, length * 8);
@@ -105,7 +105,7 @@ void insert_errors_dependent(char* block, int length, int num_errors)
 }
 
 //error inserter is a function to insert errors, so it's easy to change out
-float pass_rate(int num_tests, int num_errors, void (*error_inserter)(char*, int, int), int interleave_data)
+float pass_rate(int num_tests, int num_errors, void (*error_inserter)(uint8_t*, int, int), int interleave_data)
 {
   int successes = 0;
   for(unsigned int i = 0; i < num_tests; i++)
@@ -145,6 +145,39 @@ float pass_rate(int num_tests, int num_errors, void (*error_inserter)(char*, int
 
 int main()
 {
+  //this part tests convolution
+  /*srand(time(NULL));
+
+  uint8_t data[128];
+  for(unsigned int i = 0; i < 128; i++)
+    data[i] = rand();
+
+  raw_data rd;
+  rd.data = data;
+  rd.length = 128;
+  raw_data received = convolute(rd);
+  printf("recieved length = %i\n", received.length);
+
+  insert_errors(received.data, 128, 30);
+
+  raw_data decoded = deconvolute(received, NULL);
+  printf("decoded length = %i\n", decoded.length);
+  if(!memcmp(rd.data, decoded.data, decoded.length))
+    printf("success!\n");
+  else
+    printf("failure!\n");
+
+  dealloc(received.data);
+  dealloc(decoded.data);
+
+  printf("peak number of paths considered = %i\n", get_peak_num_paths_considered());
+
+  print_memory_usage_stats();
+
+  return 0;*/
+
+
+
   //this part tests memory_tracker
   /*int* a[100];
   for(unsigned int i = 0; i < 100; i++)
@@ -275,10 +308,10 @@ int main()
   for(int errors = 0; errors <= 10; errors++)
   {
     printf("%i,%f,%f,%f,%f\n", errors,
-      pass_rate(1000, errors, insert_errors, 0),
-      pass_rate(1000, errors, insert_errors_dependent, 0),
-      pass_rate(1000, errors, insert_errors, 1),
-      pass_rate(1000, errors, insert_errors_dependent, 1));
+      pass_rate(10000, errors, insert_errors, 0),
+      pass_rate(10000, errors, insert_errors_dependent, 0),
+      pass_rate(10000, errors, insert_errors, 1),
+      pass_rate(10000, errors, insert_errors_dependent, 1));
   }
   print_memory_usage_stats();
   return 0;

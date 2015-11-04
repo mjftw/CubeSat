@@ -106,9 +106,30 @@ void print_memory_usage_stats()
       printf("%i:\t", i);
       if(allocations[i].name)
         printf("Name: %s\n\t", allocations[i].name);
-      printf("Size: %s\n", allocations[i].size);
+      printf("Size: %i\n", allocations[i].size);
     }
   }
+}
+
+void named_allocation_dump()
+{
+  for(unsigned int i = 0; i < total_allocated; i++)
+  {
+    printf("%i:\t", i);
+    if(allocations[i].name)
+      printf("Name: %s\n\t", allocations[i].name);
+    printf("Size: %i\n", allocations[i].size);
+  }
+}
+
+uint8_t is_valid_pointer(void* ptr)
+{
+  for(unsigned int i = 0; i < total_allocated; i++)
+  {
+    if(allocations[i].ptr == ptr)
+      return 1;
+  }
+  return 0;
 }
 
 #endif  //USE_MEMORY_TRACKING
