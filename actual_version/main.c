@@ -304,15 +304,25 @@ int main()
 
   srand(time(NULL));
 
-  printf("num_errors,MPR_independent,MPR_dependent,MPR_independent_interleave,MPR_dependent_interleave\n");
-  for(int errors = 0; errors <= 10; errors++)
+  unsigned int num_tests = 10000;
+
+  FILE* fp;
+  fp = fopen("default.csv", "w");
+
+  time_t t = time(NULL);
+  fprintf(fp, "num_errors,MPR_independent,MPR_dependent,MPR_independent_interleave,MPR_dependent_interleave\n");
+  for(int errors = 0; errors <= 100; errors++)
   {
-    printf("%i,%f,%f,%f,%f\n", errors,
-      pass_rate(10000, errors, insert_errors, 0),
-      pass_rate(10000, errors, insert_errors_dependent, 0),
-      pass_rate(10000, errors, insert_errors, 1),
-      pass_rate(10000, errors, insert_errors_dependent, 1));
+    printf("iteration %i / 100  \r", errors);
+    fprintf(fp, "%i,%f,%f,%f,%f\n", errors,
+      pass_rate(num_tests, errors, insert_errors, 0),
+      pass_rate(num_tests, errors, insert_errors_dependent, 0),
+      pass_rate(num_tests, errors, insert_errors, 1),
+      pass_rate(num_tests, errors, insert_errors_dependent, 1));
   }
+  printf("Total time taken = %is\n", time(NULL) - t);
+  printf("Average time for single test (encode + errors + decode) = %f\n", (float)(time(NULL) - t) / (100.0 * (float)num_tests * 4.0));
+  fclose(fp);
   print_memory_usage_stats();
   return 0;
 }
