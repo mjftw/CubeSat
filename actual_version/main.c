@@ -121,7 +121,7 @@ float pass_rate(int num_tests, int num_errors, void (*error_inserter)(uint8_t*, 
     //make packet
     p = make_packet(rd);
 
-    //encode packet (using Hamming)
+    //encode packet
     encoded_packet ep = encode(&p);
 
     if(interleave_data)
@@ -270,33 +270,33 @@ int main()
 
 
   //This part tests interleaving
-  /*char message[50];
-  char check_message[50];
-  for(unsigned int i = 0; i < 50; i++)
+  /*uint8_t message[51];
+  uint8_t check_message[51];
+  for(unsigned int i = 0; i < 51; i++)
     message[i] = rand();
-  memcpy(check_message, message, 50);
+  memcpy(check_message, message, 51);
 
   raw_data rd;
-  rd.length = 50;
+  rd.length = 51;
   rd.data = message;
 
-  for(unsigned int i = 0; i < 50; i++)
+  for(unsigned int i = 0; i < 51; i++)
     printf("%x ", rd.data[i] & 0xff);
   printf("\n");
 
   interleave(rd);
 
-  for(unsigned int i = 0; i < 50; i++)
+  for(unsigned int i = 0; i < 51; i++)
     printf("%x ", rd.data[i] & 0xff);
   printf("\n");
 
   deinterleave(rd);
 
-  for(unsigned int i = 0; i < 50; i++)
+  for(unsigned int i = 0; i < 51; i++)
     printf("%x ", rd.data[i] & 0xff);
   printf("\n");
 
-  if(!memcmp(message, check_message, 50))
+  if(!memcmp(message, check_message, 51))
     printf("success!");
   else
     printf("Failure!");
@@ -304,16 +304,17 @@ int main()
 
   srand(time(NULL));
 
-  unsigned int num_tests = 10000;
+  unsigned int num_tests = 100;
+  unsigned int max_errors = 10;
 
   FILE* fp;
   fp = fopen("default.csv", "w");
 
   time_t t = time(NULL);
   fprintf(fp, "num_errors,MPR_independent,MPR_dependent,MPR_independent_interleave,MPR_dependent_interleave\n");
-  for(int errors = 0; errors <= 100; errors++)
+  for(int errors = 0; errors <= max_errors; errors++)
   {
-    printf("iteration %i / 100  \r", errors);
+    printf("iteration %i / %i  \r", errors, max_errors);
     fprintf(fp, "%i,%f,%f,%f,%f\n", errors,
       pass_rate(num_tests, errors, insert_errors, 0),
       pass_rate(num_tests, errors, insert_errors_dependent, 0),

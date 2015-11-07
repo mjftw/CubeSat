@@ -106,8 +106,7 @@ void shift_in_bit_viterbi_path(viterbi_path* vp, uint8_t bit, uint8_t coded_bits
 //coded bits are 2 bits taken from the encoded bit stream, used to calculate metrics etc
 void split_viterbi_path(viterbi_path* existing_vp, viterbi_path** new_vp, uint8_t coded_bits)
 {
-  if(!is_valid_pointer(existing_vp))
-    printf("!!! %x\n", existing_vp);
+  assert(is_valid_pointer(existing_vp));
   (*new_vp) = (viterbi_path*)alloc_named(sizeof(viterbi_path), "split_viterbi_path new_vp");
   (*new_vp)->encoder_state = existing_vp->encoder_state;
   (*new_vp)->data.length = existing_vp->data.length;
