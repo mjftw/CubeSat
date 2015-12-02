@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <assert.h>
 
 #include "packet.h"
 #include "datatypes.h"
@@ -12,6 +13,7 @@
 #include "bitstream.h"
 #include "convolute.h"
 #include "memory_tracker.h"
+#include "reed_solomon.h"
 
 uint8_t test_data[64];
 
@@ -104,6 +106,23 @@ void insert_errors_dependent(uint8_t* block, int length, int num_errors)
   //free(error_positions);
 }
 
+int num_errors_inserted = 0;
+
+void insert_errors2(uint8_t* block, int length, float BER)
+{
+  for(unsigned int i = 0; i < length; i++)
+  {
+    for(unsigned int j = 0; j < 8; j++)
+    {
+      if(chance(BER))
+      {
+        block[i] = insert_error(block[i], j);
+        num_errors_inserted++;
+      }
+    }
+  }
+}
+
 //error inserter is a function to insert errors, so it's easy to change out
 float pass_rate(int num_tests, int num_errors, void (*error_inserter)(uint8_t*, int, int), int interleave_data)
 {
@@ -143,8 +162,74 @@ float pass_rate(int num_tests, int num_errors, void (*error_inserter)(uint8_t*, 
   return (float)successes / (float)num_tests;
 }
 
-int main()
+//tests the methods used encoding and decoding, uses insert_errors2 to accomodate any bit rate
+float message_pass_rate(int num_tests, float BER)
 {
+  int successes = 0;
+  for(unsigned int i = 0; i < num_tests; i++)
+  {
+    for(unsigned int i = 0; i < 64; i++)
+      test_data[i] = rand();
+
+    raw_data rd;
+    rd.length = 64;
+    rd.data = test_data;
+    packet p, q;
+
+    p = make_packet(rd);
+    encoded_packet ep = encode(&p);  //currently convolutional- subject to change
+
+    interleave(ep);  //interleaves data in place
+
+    insert_errors2(ep.data, ep.length, BER);
+
+    deinterleave(ep);
+
+    q = decode(ep, NULL);
+    dealloc(ep.data);
+
+    if(!memcmp(&p, &q, sizeof(packet)))
+      successes++;
+  }
+  return (float)successes / (float)num_tests;
+}
+
+int main(int argc, char** argv)
+{
+  //purpose of main function- parse arguments and run argv[1] tests with BER of argv[2].
+  //prints the message pass rate for these tests- to be interpreted by python.
+  //many tests designed to run in parallel with different arguments
+  srand(time(NULL));
+
+  /*if(argc != 3)
+  {
+    printf("ERROR: Incorrect number of arguments\n");
+    return 0;
+  }
+
+  unsigned int num_tests = strtol(argv[1], NULL, 10);
+  float BER = strtof(argv[2], NULL);
+
+  assert(BER >= 0);
+
+  printf("%f", message_pass_rate(num_tests, BER));
+
+
+  return 0;*/
+
+  //this part tests reed solomon coded_bits
+  //raw_data rd;
+  //rs_encode(rd, 2);
+
+
+
+
+
+
+
+
+
+
   //this part tests convolution
   /*srand(time(NULL));
 
@@ -158,7 +243,7 @@ int main()
   raw_data received = convolute(rd);
   printf("recieved length = %i\n", received.length);
 
-  insert_errors(received.data, 128, 30);
+  insert_errors(received.data, 128, 20);
 
   raw_data decoded = deconvolute(received, NULL);
   printf("decoded length = %i\n", decoded.length);
@@ -304,6 +389,7 @@ int main()
 
   srand(time(NULL));
 
+
   unsigned int num_tests = 100;
   unsigned int max_errors = 10;
 
@@ -326,4 +412,5 @@ int main()
   fclose(fp);
   print_memory_usage_stats();
   return 0;
+
 }

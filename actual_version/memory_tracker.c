@@ -78,7 +78,7 @@ void dealloc(void* ptr)
     }
   }
   printf("ERROR: dealloc called with non- allocated pointer as argument\n");
-  printf("%x\n", ptr);
+  printf("%p\n", ptr);
   assert(0);  //should never reach here
 }
 

@@ -56,10 +56,10 @@ raw_data convolute(raw_data rd)
 //this is a single path through the code
 typedef struct
 {
-  uint8_t encoder_state;
   raw_data data;
   int metric;  //Hamming metric (bit agreement)- will be high if good, low if bad
   unsigned int position;
+  uint8_t encoder_state;
 } viterbi_path;
 
 //path length is in bytes.
@@ -198,7 +198,7 @@ raw_data deconvolute(raw_data rd, int* bit_error_count)
   for(unsigned int i = 0; i < NUM_PATHS_POSSIBLE; i++)
     paths[i] = NULL;  //initialised
 
-  paths[0] = initial_viterbi_path(rd.length / 2);
+  paths[0] = actual_paths[0];
   num_paths_being_considered += 1;
 
   unsigned int position = 0;
@@ -247,10 +247,15 @@ raw_data deconvolute(raw_data rd, int* bit_error_count)
   ret.data = (uint8_t*)alloc_named(ret.length, "deconvolute ret.data");
   memcpy(ret.data, best_path->data.data, ret.length);
 
+  //calculate how many bits were in error
+  if(bit_error_count != NULL)
+    *bit_error_count += rd.length * 8 - best_path->metric;
+
   //destroy all paths still being used
   for(unsigned int i = 0; i < num_paths_being_considered; i++)
     if(paths[i] != NULL)
       destroy_viterbi_path(paths[i]);
+
   return ret;
 }
 

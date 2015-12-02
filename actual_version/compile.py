@@ -9,19 +9,22 @@ import sys
 
 compiler = "gcc"
 flags = ["-std=c99", "-Werror", "-O3", "-Wall"]
+libs = ["-lm"]
 
 if __name__ == "__main__":
     if(len(sys.argv) == 2):
         cfiles = [f for f in os.listdir(".") if f.endswith(".c")]
 
-        command = [compiler] + flags + cfiles + ["-o", sys.argv[1]]
+        command = [compiler] + flags + cfiles + libs + ["-o", sys.argv[1]]
         print(" ".join(command))
-        if(not subprocess.call(command)):
-            subprocess.call([sys.argv[1]])
+        subprocess.call(command)
+        #if(not subprocess.call(command)):
+        #    subprocess.call([sys.argv[1]])
     elif(len(sys.argv) == 3):
         command = [compiler] + flags + [sys.argv[1], "-o", sys.argv[2]]
         print(" ".join(command))
-        if(not subprocess.call(command)):
-            subprocess.call([sys.argv[2]])
+        subprocess.call(command)
+        #if(not subprocess.call(command)):
+        #    subprocess.call([sys.argv[2]])
     else:
         print("Incorrect number of arguments")
