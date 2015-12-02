@@ -101,16 +101,45 @@ void shift_in_bit_viterbi_path(viterbi_path* vp, uint8_t bit, uint8_t coded_bits
 //allows up to 32 paths to be considered at once- enough to allow converging paths
 #define NUM_PATHS_POSSIBLE 32
 
+//finds the first path in actual_paths that's not also in paths, and the pointer
+viterbi_path* get_unused_path(viterbi_path** paths, viterbi_path** actual_paths)
+{
+  for(unsigned int i = 0; i < NUM_PATHS_POSSIBLE; i++)
+  {
+    uint8_t in = 0;
+    for(unsigned int j = 0; j < NUM_PATHS_POSSIBLE; j++)
+    {
+      if(paths[j] == actual_paths[i])
+      {
+        in = 1;
+        break;
+      }
+    }
+    if(!in)
+      return actual_paths[i];
+  }
+  assert(0);
+  return NULL;
+}
+
 //will allocate new_vp, and advance both by 1 by shifting in 0 or 1 into stream
 //will also update metric and position etc
 //coded bits are 2 bits taken from the encoded bit stream, used to calculate metrics etc
-void split_viterbi_path(viterbi_path* existing_vp, viterbi_path** new_vp, uint8_t coded_bits)
+void split_viterbi_path(viterbi_path* existing_vp, viterbi_path** new_vp, viterbi_path* addr_of_new_path, uint8_t coded_bits)
 {
-  assert(is_valid_pointer(existing_vp));
+  /*assert(is_valid_pointer(existing_vp));
   (*new_vp) = (viterbi_path*)alloc_named(sizeof(viterbi_path), "split_viterbi_path new_vp");
   (*new_vp)->encoder_state = existing_vp->encoder_state;
   (*new_vp)->data.length = existing_vp->data.length;
   (*new_vp)->data.data = (uint8_t*)alloc_named((*new_vp)->data.length, "split_viterbi_path (*new_vp)->data.data");
+  memcpy((*new_vp)->data.data, existing_vp->data.data, existing_vp->data.length);
+  (*new_vp)->metric = existing_vp->metric;
+  (*new_vp)->position = existing_vp->position;*/
+
+  assert(is_valid_pointer(existing_vp));
+  (*new_vp) = addr_of_new_path;
+  (*new_vp)->encoder_state = existing_vp->encoder_state;
+  (*new_vp)->data.length = existing_vp->data.length;
   memcpy((*new_vp)->data.data, existing_vp->data.data, existing_vp->data.length);
   (*new_vp)->metric = existing_vp->metric;
   (*new_vp)->position = existing_vp->position;
@@ -148,7 +177,7 @@ void trim_viterbi_paths(viterbi_path** paths, int* num_paths_being_considered)
     if(metrics_per_state[metrics_index] > paths[i]->metric)
     {
       paths_to_trim[i] = 1;  //same as default
-      destroy_viterbi_path(paths[i]);
+      //destroy_viterbi_path(paths[i]);  //don't need to destroy as paths are now constant
       paths[i] = NULL;
       (*num_paths_being_considered)--;
     }
@@ -162,7 +191,7 @@ void trim_viterbi_paths(viterbi_path** paths, int* num_paths_being_considered)
         if((paths[i]->encoder_state == paths[j]->encoder_state) && (paths[i]->metric == paths[j]->metric))
         {
           paths_to_trim[i] = 1;  //same as default
-          destroy_viterbi_path(paths[i]);
+          //destroy_viterbi_path(paths[i]);  //don't need to destroy as paths are now constant
           paths[i] = NULL;
           (*num_paths_being_considered)--;
           trimmed = 1;
@@ -193,6 +222,10 @@ void trim_viterbi_paths(viterbi_path** paths, int* num_paths_being_considered)
 
 raw_data deconvolute(raw_data rd, int* bit_error_count)
 {
+  viterbi_path* actual_paths[NUM_PATHS_POSSIBLE];
+  for(unsigned int i = 0; i < NUM_PATHS_POSSIBLE; i++)
+    actual_paths[i] = initial_viterbi_path(rd.length / 2);
+
   int num_paths_being_considered = 0;
   viterbi_path* paths[NUM_PATHS_POSSIBLE];
   for(unsigned int i = 0; i < NUM_PATHS_POSSIBLE; i++)
@@ -208,7 +241,8 @@ raw_data deconvolute(raw_data rd, int* bit_error_count)
     unsigned int original_npbc = num_paths_being_considered;
     for(unsigned int i = 0; i < original_npbc; i++)
     {
-      split_viterbi_path(paths[i], &(paths[num_paths_being_considered]), encoded_bits);
+      viterbi_path* addr_of_new_path = get_unused_path(paths, actual_paths);
+      split_viterbi_path(paths[i], &(paths[num_paths_being_considered]), addr_of_new_path, encoded_bits);
       num_paths_being_considered++;
       if(num_paths_being_considered > peak_num_paths_considered)
         peak_num_paths_considered = num_paths_being_considered;
@@ -240,6 +274,7 @@ raw_data deconvolute(raw_data rd, int* bit_error_count)
     else if(paths[i] != NULL && paths[i]->metric > best_path->metric)  //better path
       best_path = paths[i];
   }
+  //printf("hi\n");
 
   //copy best path into ret
   raw_data ret;
@@ -252,9 +287,11 @@ raw_data deconvolute(raw_data rd, int* bit_error_count)
     *bit_error_count += rd.length * 8 - best_path->metric;
 
   //destroy all paths still being used
-  for(unsigned int i = 0; i < num_paths_being_considered; i++)
+  /*for(unsigned int i = 0; i < num_paths_being_considered; i++)
     if(paths[i] != NULL)
-      destroy_viterbi_path(paths[i]);
+      destroy_viterbi_path(paths[i]);*/
+  for(unsigned int i = 0; i < NUM_PATHS_POSSIBLE; i++)
+    destroy_viterbi_path(actual_paths[i]);
 
   return ret;
 }

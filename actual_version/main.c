@@ -201,7 +201,7 @@ int main(int argc, char** argv)
   //many tests designed to run in parallel with different arguments
   srand(time(NULL));
 
-  /*if(argc != 3)
+  if(argc != 3)
   {
     printf("ERROR: Incorrect number of arguments\n");
     return 0;
@@ -214,8 +214,10 @@ int main(int argc, char** argv)
 
   printf("%f", message_pass_rate(num_tests, BER));
 
+  //print_memory_usage_stats();
 
-  return 0;*/
+
+  return 0;
 
   //this part tests reed solomon coded_bits
   //raw_data rd;
@@ -387,7 +389,7 @@ int main(int argc, char** argv)
     printf("Failure!");
   return 0;*/
 
-  srand(time(NULL));
+  /*srand(time(NULL));
 
 
   unsigned int num_tests = 100;
@@ -410,7 +412,7 @@ int main(int argc, char** argv)
   printf("Total time taken = %is\n", time(NULL) - t);
   printf("Average time for single test (encode + errors + decode) = %f\n", (float)(time(NULL) - t) / (100.0 * (float)num_tests * 4.0));
   fclose(fp);
-  print_memory_usage_stats();
+  print_memory_usage_stats();*/
   return 0;
 
 }
