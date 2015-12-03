@@ -8,11 +8,6 @@
 
 //currently uses (2,1,4) convolution
 
-//because of failures of malloc/free (no idea why) paths are now declared
-//in one massive block outside of functions, only deals with blocks of size
-//BLOCK LENGTH
-#define BLOCK_LENGTH 72
-
 int peak_num_paths_considered = 0;
 
 //inserts a bit into the encoder state
@@ -58,16 +53,10 @@ raw_data convolute(raw_data rd)
   return ret;
 }
 
-typedef struct
-{
-  unsigned int length;
-  uint8_t data[BLOCK_LENGTH + 1];
-} raw_data2;
-
 //this is a single path through the code
 typedef struct
 {
-  raw_data2 data;
+  raw_data data;
   int metric;  //Hamming metric (bit agreement)- will be high if good, low if bad
   unsigned int position;
   uint8_t encoder_state;
@@ -120,8 +109,8 @@ void split_viterbi_path(viterbi_path* existing_vp, viterbi_path** new_vp, viterb
 {
   (*new_vp) = addr_of_new_path;
   (*new_vp)->encoder_state = existing_vp->encoder_state;
-  (*new_vp)->data.length = BLOCK_LENGTH;
-  memcpy((*new_vp)->data.data, existing_vp->data.data, BLOCK_LENGTH);
+  (*new_vp)->data.length = existing_vp->data.length;
+  memcpy((*new_vp)->data.data, existing_vp->data.data, existing_vp->data.length);
   (*new_vp)->metric = existing_vp->metric;
   (*new_vp)->position = existing_vp->position;
 
@@ -202,12 +191,12 @@ viterbi_path actual_paths[NUM_PATHS_POSSIBLE];
 
 raw_data deconvolute(raw_data rd, int* bit_error_count)
 {
-  assert(rd.length / 2 == BLOCK_LENGTH);
   for(unsigned int i = 0; i < NUM_PATHS_POSSIBLE; i++)
   {
     actual_paths[i].encoder_state = 0;  //always starts at 0
-    actual_paths[i].data.length = BLOCK_LENGTH;
-    for(unsigned int j = 0; j < BLOCK_LENGTH; j++)
+    actual_paths[i].data.length = rd.length / 2;
+    actual_paths[i].data.data = (uint8_t*)alloc_named(actual_paths[i].data.length + 1, "actual_paths[i].data.data");
+    for(unsigned int j = 0; j < actual_paths[i].data.length; j++)
       actual_paths[i].data.data[j] = 0;
     actual_paths[i].metric = 0;    //no agreement yet
     actual_paths[i].position = 0;  //bit position in decoded data
@@ -268,13 +257,16 @@ raw_data deconvolute(raw_data rd, int* bit_error_count)
 
   //copy best path into ret
   raw_data ret;
-  ret.length = BLOCK_LENGTH;
-  ret.data = (uint8_t*)alloc_named(BLOCK_LENGTH, "deconvolute ret.data");
-  memcpy(ret.data, best_path->data.data, BLOCK_LENGTH);
+  ret.length = best_path->data.length-1;  //-1 to get rid of extra flush byte
+  ret.data = (uint8_t*)alloc_named(ret.length, "deconvolute ret.data");
+  memcpy(ret.data, best_path->data.data, ret.length);
 
   //calculate how many bits were in error
   if(bit_error_count != NULL)
-    *bit_error_count += BLOCK_LENGTH * 8 - best_path->metric;
+    *bit_error_count += ret.length * 8 - best_path->metric;
+
+  for(unsigned int i = 0; i < NUM_PATHS_POSSIBLE; i++)
+    dealloc(actual_paths[i].data.data);
 
   return ret;
 }
