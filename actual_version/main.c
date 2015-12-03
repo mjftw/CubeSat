@@ -169,7 +169,7 @@ float message_pass_rate(int num_tests, float BER)
   for(unsigned int i = 0; i < num_tests; i++)
   {
     for(unsigned int i = 0; i < 64; i++)
-      test_data[i] = rand();
+      test_data[i] = 0xff;
 
     raw_data rd;
     rd.length = 64;
@@ -190,6 +190,7 @@ float message_pass_rate(int num_tests, float BER)
 
     if(!memcmp(&p, &q, sizeof(packet)))
       successes++;
+
   }
   return (float)successes / (float)num_tests;
 }
