@@ -154,10 +154,20 @@ raw_data produce_generator_polynomial(int t)
 	}
 
 	dealloc(aux.data);
+	dealloc(factorised.data);
+
+	//reverse in place
+	for(unsigned int i = 0; i < ret.length / 2; i++)
+	{
+		uint8_t tmp = ret.data[i];
+		ret.data[i] = ret.data[ret.length - 1 - i];
+		ret.data[ret.length - 1 - i] = tmp;
+	}
+
   return ret;
 }
 
-//the encode function simply adds the 2t parity checking symbols
+//the encode function simply calculates the 2t parity checking symbols and returns T(x)
 raw_data rs_encode(raw_data rd, int t)
 {
   raw_data ret;
@@ -169,48 +179,22 @@ raw_data rs_encode(raw_data rd, int t)
 	for(unsigned int i = rd.length; i < ret.length; i++)
 		ret.data[i] = 0;  //initialise parity symbols to 0
 
-	produce_generator_polynomial(t);
-	//for(unsigned int i = 0; i < )
+	raw_data g_x = produce_generator_polynomial(t);
 
-
-
-
-	for(unsigned int i = 1; i < 256; i++)
+	//do division here-
+	for(unsigned int i = 0; i < ret.length - 2 * t; i++)
 	{
-		for(unsigned int j = 1; j < 256; j++)
-		{
-			uint8_t ok = 1;
-			uint8_t tmp = galois_multiply(i, j);
-			uint8_t tmp2 = galois_divide(tmp, j);
-			uint8_t tmp3 = galois_divide(tmp, i);
-			if(tmp2 != i)
-				ok = 0;
-			if(tmp3 != j)
-				ok = 0;
-			if(!ok)
-			{
-				printf("%i * %i = %i\n", i, j, tmp);
-				printf("%i / %i = %i\n", tmp, j, tmp2);
-				printf("%i / %i = %i\n\n", tmp, i, tmp3);
-			}
-		}
+		if(ret.data[i] == 0)  //multiply yields 0, so subtract doesn't change it
+			continue;
+		uint8_t multiplier = ret.data[i];
+		for(unsigned int j = 0; j < g_x.length; j++)
+			ret.data[i+j] ^= galois_multiply(g_x.data[j], multiplier);
 	}
-	//printf("%i\n", GF256inv(8));
-	//printf("%i\n", galois_divide(99, 13));
 
+	//copy message back- as message symbols are unchanged in T(x)
+	memcpy(ret.data, rd.data, rd.length);
 
-
-	//produce_generator_polynomial(t);
-
-
-
-
-  //ret.data = (uint8_t*)alloc_named(rd.length + 2 * t, "rs_encode ret.data");
-
-
-
-
-
+	dealloc(g_x.data);
   return ret;
 }
 

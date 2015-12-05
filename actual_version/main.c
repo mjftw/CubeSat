@@ -222,10 +222,19 @@ int main(int argc, char** argv)
 
   //this part tests reed solomon coded_bits
   raw_data rd;
-  rs_encode(rd, 2);
+  rd.length = 64;
+  rd.data = (uint8_t*)alloc_named(rd.length, "main rd.data");
+  for(unsigned int i = 0; i < rd.length; i++)
+    rd.data[i] = rand();
+
+  rs_encode(rd, 8);
 
 
+  dealloc(rd.data);
 
+
+  if(allocated() > 0)
+    named_allocation_dump();
 
 
 
