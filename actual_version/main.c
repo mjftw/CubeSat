@@ -200,7 +200,7 @@ int main(int argc, char** argv)
   //purpose of main function- parse arguments and run argv[1] tests with BER of argv[2].
   //prints the message pass rate for these tests- to be interpreted by python.
   //many tests designed to run in parallel with different arguments
-  srand(time(NULL));
+  /*srand(time(NULL));
 
   if(argc != 3)
   {
@@ -218,11 +218,11 @@ int main(int argc, char** argv)
   //print_memory_usage_stats();
 
 
-  return 0;
+  return 0;*/
 
   //this part tests reed solomon coded_bits
-  //raw_data rd;
-  //rs_encode(rd, 2);
+  raw_data rd;
+  rs_encode(rd, 2);
 
 
 

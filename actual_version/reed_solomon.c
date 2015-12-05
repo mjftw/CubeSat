@@ -1,6 +1,8 @@
 #include "reed_solomon.h"
 #include <stdio.h>
 #include <math.h>
+#include <assert.h>
+#include <string.h>
 #include "datatypes.h"
 #include "memory_tracker.h"
 
@@ -87,18 +89,71 @@ uint8_t GF256inv(uint8_t index)
 	return lookup[index];
 }
 
+//returns a * b
+uint8_t galois_multiply(uint8_t a, uint8_t b)
+{
+	if(a == 0 || b == 0)
+		return 0;
+	uint16_t ret = GF256((GF256inv(a) + GF256inv(b) - 1) % 255);
+
+	if(ret == 0)
+		return 142;  //the logarithmic method doesn't work and produces 0's- 142 is always correct in this case
+	return ret;
+}
+
+//return a / b
+uint8_t galois_divide(uint8_t a, uint8_t b)
+{
+	//potential problem with 0
+	if(a == 0 || b == 0)
+		return 0;
+	int16_t c = GF256inv(a) - GF256inv(b);
+	if(c < 0)
+		c += 255;
+	return GF256(c+1);
+}
+
 raw_data produce_generator_polynomial(int t)
 {
-  raw_data ret;
-  ret.length = 2 * t + 1;
-  ret.data = (uint8_t*)alloc_named(ret.length, "produce_generator_polynomial ret");
+	//start with factors like (x+GF256(1)(x+GF256(2)) etc
+	//expand factors into each other
+	raw_data factorised;
+	factorised.length = 2 * t;
+	factorised.data = (uint8_t*)alloc_named(factorised.length, "produce_generator_polynomial factorised");
+	for(unsigned int i = 0; i < factorised.length; i++)
+		factorised.data[i] = GF256(i+1);
 
-  uint8_t* factors = (uint8_t*)alloc_named(2 * t, "produce_generator_polynomial factors");
-  for(unsigned int i = 0; i < 2 * t; i++)
-    factors[i] = pow(2, i);
+	raw_data ret, aux;
+	ret.length = 2 * t + 1;
+	ret.data = (uint8_t*)alloc_named(ret.length, "produce_generator_polynomial ret");
+	aux.length = 2 * t + 1;
+	aux.data = (uint8_t*)alloc_named(ret.length, "produce_generator_polynomial aux");
 
+	//ret and aux represent polynomials. The index represents the power and the
+	//value represents the coefficient. aux is auxiliary for shift and add
+	ret.data[0] = 1;
+	for(unsigned int i = 1; i < ret.length; i++)
+	{
+		ret.data[i] = 0;
+	}
 
+	for(unsigned int i = 0; i < factorised.length; i++)
+	{
+		//multiply - put result in aux
+		for(unsigned int j = 0; j < ret.length; j++)
+			aux.data[j] = galois_multiply(ret.data[j], factorised.data[i]);
 
+		//shift in place
+		for(unsigned int j = ret.length - 1; j > 0; j--)
+			ret.data[j] = ret.data[j-1];
+		ret.data[0] = 0;
+
+		//add
+		for(unsigned int j = 0; j < ret.length; j++)
+			ret.data[j] ^= aux.data[j];
+	}
+
+	dealloc(aux.data);
   return ret;
 }
 
@@ -107,15 +162,50 @@ raw_data rs_encode(raw_data rd, int t)
 {
   raw_data ret;
 
+	ret.length = rd.length + 2 * t;
+	ret.data = (uint8_t*)alloc_named(ret.length, "rs_encode ret");
+
+	memcpy(ret.data, rd.data, rd.length);  //copy message
+	for(unsigned int i = rd.length; i < ret.length; i++)
+		ret.data[i] = 0;  //initialise parity symbols to 0
+
+	produce_generator_polynomial(t);
+	//for(unsigned int i = 0; i < )
+
+
+
+
+	for(unsigned int i = 1; i < 256; i++)
+	{
+		for(unsigned int j = 1; j < 256; j++)
+		{
+			uint8_t ok = 1;
+			uint8_t tmp = galois_multiply(i, j);
+			uint8_t tmp2 = galois_divide(tmp, j);
+			uint8_t tmp3 = galois_divide(tmp, i);
+			if(tmp2 != i)
+				ok = 0;
+			if(tmp3 != j)
+				ok = 0;
+			if(!ok)
+			{
+				printf("%i * %i = %i\n", i, j, tmp);
+				printf("%i / %i = %i\n", tmp, j, tmp2);
+				printf("%i / %i = %i\n\n", tmp, i, tmp3);
+			}
+		}
+	}
+	//printf("%i\n", GF256inv(8));
+	//printf("%i\n", galois_divide(99, 13));
+
+
+
+	//produce_generator_polynomial(t);
+
 
 
 
   //ret.data = (uint8_t*)alloc_named(rd.length + 2 * t, "rs_encode ret.data");
-
-  for(unsigned int i = 0; i < 256; i++)
-  {
-    printf("%i %i\n", i, GF256(i));
-  }
 
 
 

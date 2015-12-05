@@ -187,15 +187,16 @@ void trim_viterbi_paths(viterbi_path** paths, int* num_paths_being_considered)
   }
 }
 
-viterbi_path actual_paths[NUM_PATHS_POSSIBLE];
-
 raw_data deconvolute(raw_data rd, int* bit_error_count)
 {
+  viterbi_path* actual_paths;
+  actual_paths = (viterbi_path*)alloc_named(sizeof(viterbi_path) * NUM_PATHS_POSSIBLE, "deconvolute actual_paths");
+
   for(unsigned int i = 0; i < NUM_PATHS_POSSIBLE; i++)
   {
     actual_paths[i].encoder_state = 0;  //always starts at 0
     actual_paths[i].data.length = rd.length / 2;
-    actual_paths[i].data.data = (uint8_t*)alloc_named(actual_paths[i].data.length + 1, "actual_paths[i].data.data");
+    actual_paths[i].data.data = (uint8_t*)alloc_named(actual_paths[i].data.length + 1, "deconvolute actual_paths[i].data.data");
     for(unsigned int j = 0; j < actual_paths[i].data.length; j++)
       actual_paths[i].data.data[j] = 0;
     actual_paths[i].metric = 0;    //no agreement yet
@@ -267,6 +268,7 @@ raw_data deconvolute(raw_data rd, int* bit_error_count)
 
   for(unsigned int i = 0; i < NUM_PATHS_POSSIBLE; i++)
     dealloc(actual_paths[i].data.data);
+  dealloc(actual_paths);
 
   return ret;
 }
