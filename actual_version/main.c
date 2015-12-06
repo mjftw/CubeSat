@@ -221,17 +221,30 @@ int main(int argc, char** argv)
   return 0;*/
 
   //this part tests reed solomon coded_bits
+  int t = 2;
+  int error_count = 0;
   raw_data rd;
-  rd.length = 64;
+  rd.length = 4;
   rd.data = (uint8_t*)alloc_named(rd.length, "main rd.data");
   for(unsigned int i = 0; i < rd.length; i++)
     rd.data[i] = rand();
 
-  rs_encode(rd, 8);
+  raw_data encoded = rs_encode(rd, t);
 
+  printx(encoded);
+  printf("\n");
+
+  encoded.data[rand() % encoded.length] = rand();
+  //encoded.data[rand() % encoded.length] = rand();
+
+  printx(encoded);
+  printf("\n");
+
+  raw_data decoded = rs_decode(encoded, t, &error_count);
 
   dealloc(rd.data);
-
+  dealloc(encoded.data);
+  dealloc(decoded.data);
 
   if(allocated() > 0)
     named_allocation_dump();

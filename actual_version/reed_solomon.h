@@ -9,7 +9,7 @@
 
 raw_data rs_encode(raw_data rd, int t);
 
-raw_data rs_decode(raw_data rd, int* bit_error_count);
+raw_data rs_decode(raw_data rd, int t, int* bit_error_count);
 
 
 #endif  //REED_SOLOMON_H
