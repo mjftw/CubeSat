@@ -14,6 +14,8 @@
 #include "convolute.h"
 #include "memory_tracker.h"
 #include "reed_solomon.h"
+#include "matrix.h"
+#include "galois_field.h"
 
 uint8_t test_data[64];
 
@@ -251,9 +253,36 @@ int main(int argc, char** argv)
 
 
 
+  //this part tests matrices
+  /*raw_data mat;
+  mat.length = 16;
+  mat.data = (uint8_t*)alloc_named(mat.length, "main mat");
 
+  //mat.data[0] = 0x2a;
+  //mat.data[1] = 0x4f;
+  //mat.data[2] = 0x52;
+  //mat.data[3] = 0x2a;
 
+  //printf("%x\n", galois_multiply(0x2a, 0x2a));
+  //printf("%x\n", galois_multiply(0x4f, 0x52));
 
+  for(unsigned int i = 0; i < mat.length; i++)
+  {
+    mat.data[i] = rand();
+  }
+
+  print_matrix(mat);
+  printf("%x\n", determinant(mat));
+
+  raw_data mat2 = inverse(mat, determinant(mat));
+
+  print_matrix(mat2);
+
+  dealloc(mat.data);
+  dealloc(mat2.data);
+
+  if(allocated() > 0)
+    named_allocation_dump();*/
 
   //this part tests convolution
   /*srand(time(NULL));
