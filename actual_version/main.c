@@ -222,27 +222,65 @@ int main(int argc, char** argv)
 
   return 0;*/
 
+  //printf("%x\n", galois_divide(0x8e, 0x2));
+  //return 0;
+
+  //printf("%x\n", galois_divide(0x6, 0x2));
+  //printf("%x\n", galois_divide(0x7, 0x3));
+  //printf("%x\n", galois_multiply(0x4, 0x5));
+  //printf("%x\n", galois_multiply(0xf4, 0x3));
+  //return 0;
+
+  //printf("%x\n", galois_multiply(0x1a, 0xa1) ^ galois_multiply(0x13, 0x45));
+  //return 0;
+
+  /*for(unsigned int i = 0; i < 256; i++)
+  {
+    for(unsigned int j = 0; j < 256; j++)
+    {
+      if((i ^ j) == 0x3)
+        printf("%x %x\n", i, j);
+    }
+  }
+  return 0;*/
+
   //this part tests reed solomon coded_bits
-  int t = 2;
+  int t = 4;
   int error_count = 0;
   raw_data rd;
-  rd.length = 4;
+  rd.length = 64;
   rd.data = (uint8_t*)alloc_named(rd.length, "main rd.data");
   for(unsigned int i = 0; i < rd.length; i++)
-    rd.data[i] = rand();
+    rd.data[i] = i;
 
   raw_data encoded = rs_encode(rd, t);
 
   printx(encoded);
   printf("\n");
 
-  encoded.data[rand() % encoded.length] = rand();
-  //encoded.data[rand() % encoded.length] = rand();
+  encoded.data[5] ^= 0x1;
+  encoded.data[11] ^= 0x45;
+  encoded.data[3] ^= 0x3;
+  encoded.data[12] = 3;
+  /*encoded.data[13] = 4;
+  encoded.data[14] = 5;
+  encoded.data[15] = 6;*/
 
   printx(encoded);
   printf("\n");
 
   raw_data decoded = rs_decode(encoded, t, &error_count);
+
+  printx(rd);
+  printf("\n");
+  printx(decoded);
+  printf("\n");
+
+  if(memcmp(rd.data, decoded.data, rd.length))
+    printf("Failure!\n");
+  else
+    printf("Success!\n");
+
 
   dealloc(rd.data);
   dealloc(encoded.data);
@@ -251,17 +289,26 @@ int main(int argc, char** argv)
   if(allocated() > 0)
     named_allocation_dump();
 
-
+  /*printf("%x\n", galois_multiply(0xc2, 0x2) ^ galois_multiply(0xca, 0x3));
+  printf("%x\n", galois_multiply(0xf0, 0x2) ^ galois_multiply(0xd6, 0x3));
 
   //this part tests matrices
-  /*raw_data mat;
-  mat.length = 16;
+  raw_data mat;
+  mat.length = 4;
   mat.data = (uint8_t*)alloc_named(mat.length, "main mat");
 
-  //mat.data[0] = 0x2a;
-  //mat.data[1] = 0x4f;
-  //mat.data[2] = 0x52;
-  //mat.data[3] = 0x2a;
+  mat.data[0] = 0xc2;
+  mat.data[1] = 0xca;
+  mat.data[2] = 0xf0;
+  mat.data[3] = 0xd6;
+
+  uint8_t test_data[2] = {2, 3};
+  raw_data test;
+  test.length = 2;
+  test.data = test_data;
+
+  printx(mat_vec_multiply(mat, test));
+  return 0;
 
   //printf("%x\n", galois_multiply(0x2a, 0x2a));
   //printf("%x\n", galois_multiply(0x4f, 0x52));

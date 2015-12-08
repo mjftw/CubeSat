@@ -59,7 +59,9 @@ raw_data sub_matrix(raw_data mat, uint8_t row, uint8_t col)
 
 uint8_t determinant(raw_data mat)
 {
-  if(mat.length == 1)
+  if(mat.length == 0)
+    return 1;
+  else if(mat.length == 1)
     return mat.data[0];
 
   uint8_t size = sqrt(mat.length);
@@ -81,6 +83,7 @@ raw_data inverse(raw_data mat, uint8_t det)
   cofactor.length = mat.length;
   cofactor.data = (uint8_t*)alloc_named(cofactor.length, "inverse cofactor");
   uint8_t size = sqrt(mat.length);
+
   //calculate matrix of cofactors
   for(uint8_t i = 0; i < size; i++)
   {
@@ -111,5 +114,24 @@ raw_data inverse(raw_data mat, uint8_t det)
 
   dealloc(cofactor.data);
 
+  return ret;
+}
+
+//multiplies a nxn matrix by a length n vector and returns a length n vector
+raw_data mat_vec_multiply(raw_data mat, raw_data vec)
+{
+  raw_data ret;
+  ret.length = vec.length;
+  ret.data = (uint8_t*)alloc_named(ret.length, "multiply ret");
+
+  for(unsigned int i = 0; i < ret.length; i++)
+  {
+    uint8_t accumulator = 0;
+    for(unsigned int j = 0; j < ret.length; j++)
+    {
+      accumulator ^= galois_multiply(at(mat, i, j), vec.data[j]);
+    }
+    ret.data[i] = accumulator;
+  }
   return ret;
 }

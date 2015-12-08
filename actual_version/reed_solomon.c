@@ -6,6 +6,7 @@
 #include "datatypes.h"
 #include "memory_tracker.h"
 #include "galois_field.h"
+#include "matrix.h"
 
 raw_data get_factorised_generator(int t)
 {
@@ -139,26 +140,169 @@ raw_data rs_decode(raw_data rd, int t, int* bit_error_count)
 		printf("%x\n", syndromes.data[i]);
 	}
 
+	/*
+		uses syndrome_vector = syndrome_matrix X error_locator
+		eg:
+			( S2 )  =  ( S1  S0 ) X ( lambda0 )
+			( S3 )     ( S2  S1 )   ( lambda1 )
+	*/
+	int v;
+	uint8_t det = 0;
+	raw_data syndrome_matrix;
+	for(v = t; v > 0; v--)
+	{
+		syndrome_matrix.length = pow(v, 2);
+		syndrome_matrix.data = (uint8_t*)alloc_named(syndrome_matrix.length, "rs_decode syndrome_matrix");
 
+		//i is row, j is column, construct syndrome matrix
+		for(unsigned int i = 0; i < v; i++)
+		{
+			for(unsigned int j = 0; j < v; j++)
+			{
+				syndrome_matrix.data[i * v + j] = syndromes.data[v-1 + i - j];
+			}
+		}
 
+		//store in det so don't need to recalculate later for inverse
+		det = determinant(syndrome_matrix);
+		if(det == 0)  //fewer errors, keep trying
+		{
+			dealloc(syndrome_matrix.data);
+		}
+		else
+		{
+			printf("message has %i symbol errors!\n", v);
+			break;
+		}
+	}
 
+	raw_data syndrome_vector;
+	syndrome_vector.length = v;
+	syndrome_vector.data = (uint8_t*)alloc_named(syndrome_vector.length, "rs_decode syndrome_vector");
+	for(unsigned int i = v; i < 2 * v; i++)
+		syndrome_vector.data[i - v] = syndromes.data[i];
 
+	printf("syndrome matrix:\n");
+	print_matrix(syndrome_matrix);
 
+	raw_data syndrome_matrix_inv = inverse(syndrome_matrix, det);
 
+	printf("inverse matrix:\n");
+	print_matrix(syndrome_matrix_inv);
 
+	raw_data error_locator = mat_vec_multiply(syndrome_matrix_inv, syndrome_vector);
 
+	printf("error_locator:\n");
+	for(unsigned int i = 0; i < error_locator.length; i++)
+	{
+		printf("%x\n", error_locator.data[i]);
+	}
 
+	raw_data error_positions;
+	error_positions.length = v;
+	error_positions.data = (uint8_t*)alloc_named(error_positions.length, "rs_decode error_positions");
+
+	//sub in all possible values of x in lambda(x) (Chein search)
+	uint8_t errors_found = 0;
+	for(unsigned int x = 0; x < 256; x++)
+	{
+		uint8_t accumulator = 1;  //lambda(x) equation starts with 1
+		uint8_t x_pow_n = 1;
+		for(unsigned int n = 0; n < error_locator.length; n++)
+		{
+			x_pow_n = galois_multiply(x_pow_n, x);  //multiply by x each time
+			accumulator ^= galois_multiply(error_locator.data[n], x_pow_n);
+		}
+		if(accumulator == 0)
+		{
+			error_positions.data[errors_found] = rd.length - GF256inv(galois_divide(1, x));
+			errors_found++;
+			if(errors_found == v)
+				break;
+		}
+	}
+
+	printf("error positions:\n");
+	for(unsigned int i = 0; i < error_positions.length; i++)
+		printf("%i\n", error_positions.data[i]);
+
+	//construct the locator matrix from the error locator polynomial
+	raw_data locator_matrix;
+	locator_matrix.length = pow(error_locator.length, 2);
+	locator_matrix.data = (uint8_t*)alloc_named(locator_matrix.length, "rs_decode locator_matrix");
+
+	raw_data error_locator_pow;
+	error_locator_pow.length = error_locator.length;
+	error_locator_pow.data = (uint8_t*)alloc_named(error_locator_pow.length, "error_locator_pow");
+
+	for(unsigned int j = 0; j < v; j++)
+		error_locator_pow.data[j] = 1; //galois_multiply(error_locator.data[j], error_locator_pow.data[j]);
+
+	printf("error_locator_pow:\n");
+	for(unsigned int i = 0; i < error_locator_pow.length; i++)
+		printf("%x ", error_locator_pow.data[i]);
+	printf("\n");
+
+	memcpy(error_locator.data, error_positions.data, error_locator.length);
+	for(unsigned int i = 0; i < error_locator.length; i++)
+	{
+		error_locator.data[i] = GF256(rd.length - error_locator.data[i]);
+		//error_lcoator.data[i] =
+	}
+
+	printf("new error_locator:\n");
+	for(unsigned int i = 0; i < error_locator.length; i++)
+		printf("%x\n", error_locator.data[i]);
+
+	//use cumulative multiplication for powers of other rows
+	for(unsigned int i = 0; i < v; i++)
+	{
+		for(unsigned int j = 0; j < v; j++)
+		{
+			*ptr_at(locator_matrix, i, j) = error_locator_pow.data[j];
+			error_locator_pow.data[j] = galois_multiply(error_locator_pow.data[j], error_locator.data[j]);
+		}
+	}
+
+	//shorten "syndromes" vector to length v
+	/*if(syndromes.length > v)
+	{
+		uint8_t* new_syndromes = (uint8_t*)alloc_named(v, "rs_decode new_syndromes");
+		memcpy(new_syndromes, syndromes.data, v);
+		dealloc(syndromes.data);
+		syndromes.data = new_syndromes;
+		syndromes.length = v;
+	}*/
+	syndromes.length = v;
+
+	printf("shortened syndrome:\n");
+	for(unsigned int i = 0; i < syndromes.length; i++)
+		printf("%x\n", syndromes.data[i]);
+
+	printf("locator_matrix:\n");
+	print_matrix(locator_matrix);
+
+	raw_data locator_inverse = inverse(locator_matrix, determinant(locator_matrix));
+
+	printf("locator_inverse:\n");
+	print_matrix(locator_inverse);
+
+	raw_data value_vector = mat_vec_multiply(locator_inverse, syndromes);
+
+	printf("error_values:\n");
+	for(unsigned int i = 0; i < value_vector.length; i++)
+		printf("%x\n", value_vector.data[i]);
 
 	ret.length = rd.length - 2 * t;
+	printf("ret.length = %i\n", ret.length);
 	ret.data = (uint8_t*)alloc_named(ret.length, "rs_decode ret");
+	memcpy(ret.data, rd.data, ret.length);
 
-
-
-
-
-
-
-
+	for(unsigned int i = 0; i < value_vector.length; i++)
+	{
+		if(error_positions.data[i] < ret.length)
+			ret.data[error_positions.data[i]] ^= value_vector.data[i];
+	}
 
   return ret;
 }
