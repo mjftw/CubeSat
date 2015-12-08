@@ -20,6 +20,4 @@ uint8_t* ptr_at(raw_data mat, uint8_t row, uint8_t col);
 //returns the value of the matrix element at row, column
 uint8_t at(raw_data mat, uint8_t row, uint8_t col);
 
-void print_matrix(raw_data mat);
-
 #endif  //MATRIX_H

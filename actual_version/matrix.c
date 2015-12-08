@@ -122,7 +122,7 @@ raw_data mat_vec_multiply(raw_data mat, raw_data vec)
 {
   raw_data ret;
   ret.length = vec.length;
-  ret.data = (uint8_t*)alloc_named(ret.length, "multiply ret");
+  ret.data = (uint8_t*)alloc_named(ret.length, "mat_vec_multiply ret");
 
   for(unsigned int i = 0; i < ret.length; i++)
   {

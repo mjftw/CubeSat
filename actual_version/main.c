@@ -262,9 +262,6 @@ int main(int argc, char** argv)
   encoded.data[11] ^= 0x45;
   encoded.data[3] ^= 0x3;
   encoded.data[12] = 3;
-  /*encoded.data[13] = 4;
-  encoded.data[14] = 5;
-  encoded.data[15] = 6;*/
 
   printx(encoded);
   printf("\n");
