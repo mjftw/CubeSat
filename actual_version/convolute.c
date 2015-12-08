@@ -195,8 +195,8 @@ raw_data deconvolute(raw_data rd, int* bit_error_count)
   for(unsigned int i = 0; i < NUM_PATHS_POSSIBLE; i++)
   {
     actual_paths[i].encoder_state = 0;  //always starts at 0
-    actual_paths[i].data.length = rd.length / 2;
-    actual_paths[i].data.data = (uint8_t*)alloc_named(actual_paths[i].data.length + 1, "deconvolute actual_paths[i].data.data");
+    actual_paths[i].data.length = (rd.length - 1) / 2 + 1;
+    actual_paths[i].data.data = (uint8_t*)alloc_named(actual_paths[i].data.length, "deconvolute actual_paths[i].data.data");
     for(unsigned int j = 0; j < actual_paths[i].data.length; j++)
       actual_paths[i].data.data[j] = 0;
     actual_paths[i].metric = 0;    //no agreement yet
@@ -212,7 +212,7 @@ raw_data deconvolute(raw_data rd, int* bit_error_count)
   num_paths_being_considered += 1;
 
   unsigned int position = 0;
-  while(position / 8 < rd.length)
+  while(position < rd.length * 8 - 4)
   {
     uint8_t encoded_bits = get_bits_from_position(rd.data, 2, &position);
     unsigned int original_npbc = num_paths_being_considered;
@@ -258,7 +258,7 @@ raw_data deconvolute(raw_data rd, int* bit_error_count)
 
   //copy best path into ret
   raw_data ret;
-  ret.length = best_path->data.length-1;  //-1 to get rid of extra flush byte
+  ret.length = rd.length/2; //best_path->data.length-1;  //-1 to get rid of extra flush byte
   ret.data = (uint8_t*)alloc_named(ret.length, "deconvolute ret.data");
   memcpy(ret.data, best_path->data.data, ret.length);
 

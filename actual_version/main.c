@@ -17,8 +17,6 @@
 #include "matrix.h"
 #include "galois_field.h"
 
-uint8_t test_data[64];
-
 void printx(raw_data rd)
 {
   for(unsigned int i = 0; i < rd.length; i++)
@@ -131,12 +129,11 @@ float pass_rate(int num_tests, int num_errors, void (*error_inserter)(uint8_t*, 
   int successes = 0;
   for(unsigned int i = 0; i < num_tests; i++)
   {
-    for(unsigned int i = 0; i < 64; i++)
-      test_data[i] = 255;
-
     raw_data rd;
     rd.length = 64;
-    rd.data = test_data;
+    rd.data = (uint8_t*)alloc_named(rd.length, "message_pass_rate rd");
+    for(unsigned int i = 0; i < 64; i++)
+      rd.data[i] = 0xff;
     packet p, q;
 
     //make packet
@@ -170,16 +167,20 @@ float message_pass_rate(int num_tests, float BER)
   int successes = 0;
   for(unsigned int i = 0; i < num_tests; i++)
   {
-    for(unsigned int i = 0; i < 64; i++)
-      test_data[i] = 0xff;
 
     raw_data rd;
     rd.length = 64;
-    rd.data = test_data;
-    packet p, q;
+    rd.data = (uint8_t*)alloc_named(rd.length, "message_pass_rate rd");
+    for(unsigned int i = 0; i < 64; i++)
+      rd.data[i] = rand();
 
-    p = make_packet(rd);
-    encoded_packet ep = encode(&p);  //currently convolutional- subject to change
+    int t = 2;
+
+    //p = make_packet(rd);
+    //encoded_packet ep = encode(&p);  //currently convolutional- subject to change
+
+    raw_data rs_encoded = rs_encode(rd, t);
+    raw_data ep = convolute(rs_encoded);
 
     interleave(ep);  //interleaves data in place
 
@@ -187,12 +188,23 @@ float message_pass_rate(int num_tests, float BER)
 
     deinterleave(ep);
 
-    q = decode(ep, NULL);
-    dealloc(ep.data);
+    raw_data deconvoluted = deconvolute(ep, NULL);
+    raw_data decoded = rs_decode(deconvoluted, t, NULL);
 
-    if(!memcmp(&p, &q, sizeof(packet)))
+    //q = decode(ep, NULL);
+    if(rd.length != decoded.length)
+    {
+      printf("lengths are not the same!\n");
+      printf("rd.length = %i, decoded.length = %i\n", rd.length, decoded.length);
+    }
+    if(!memcmp(decoded.data, rd.data, rd.length))
       successes++;
 
+    dealloc(ep.data);
+    dealloc(rs_encoded.data);
+    dealloc(deconvoluted.data);
+    dealloc(decoded.data);
+    dealloc(rd.data);
   }
   return (float)successes / (float)num_tests;
 }
@@ -202,7 +214,7 @@ int main(int argc, char** argv)
   //purpose of main function- parse arguments and run argv[1] tests with BER of argv[2].
   //prints the message pass rate for these tests- to be interpreted by python.
   //many tests designed to run in parallel with different arguments
-  /*srand(time(NULL));
+  srand(time(NULL));
 
   if(argc != 3)
   {
@@ -220,7 +232,7 @@ int main(int argc, char** argv)
   //print_memory_usage_stats();
 
 
-  return 0;*/
+  return 0;
 
   //printf("%x\n", galois_divide(0x8e, 0x2));
   //return 0;
@@ -245,7 +257,7 @@ int main(int argc, char** argv)
   return 0;*/
 
   //this part tests reed solomon coded_bits
-  int t = 4;
+  /*int t = 4;
   int error_count = 0;
   raw_data rd;
   rd.length = 64;
@@ -284,7 +296,7 @@ int main(int argc, char** argv)
   dealloc(decoded.data);
 
   if(allocated() > 0)
-    named_allocation_dump();
+    named_allocation_dump();*/
 
   /*printf("%x\n", galois_multiply(0xc2, 0x2) ^ galois_multiply(0xca, 0x3));
   printf("%x\n", galois_multiply(0xf0, 0x2) ^ galois_multiply(0xd6, 0x3));

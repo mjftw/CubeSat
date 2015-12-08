@@ -74,7 +74,7 @@ int read_packet(raw_data* ret, const packet* p)
 
 encoded_packet encode(const packet* p)
 {
-  encoded_packet ret;
+  raw_data ret;
   raw_data pkt;
   pkt.data = (uint8_t*)p;
   pkt.length = sizeof(packet);
