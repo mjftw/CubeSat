@@ -60,8 +60,19 @@ if __name__ == "__main__":
         print("%i / %i done     " % (i, len(csv_contents)), end="\r")
     print("%i / %i done     " % (len(csv_contents), len(csv_contents)))
 
+    try:
+        f = open(sys.argv[2], "w")
+    except PermissionError:
+        tries = 2
+        while 1:
+            try:
+                f = open(sys.argv[2] + tries, "w")
+                break
+            except PermissionError:
+                tries += 1
+            if(tries > 100):
+                break
 
-    f = open(sys.argv[2], "w")
     f.write("SNR,BER,message pass rate\n")
     for i in range(len(SNRs)):
         try:
