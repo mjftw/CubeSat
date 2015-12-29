@@ -63,6 +63,24 @@ uint8_t determinant(raw_data mat)
     return 1;
   else if(mat.length == 1)
     return mat.data[0];
+  else if(mat.length == 4)
+  {
+    return galois_multiply(mat.data[0], mat.data[3])
+      ^ galois_multiply(mat.data[1], mat.data[2]);
+  }
+  else if(mat.length == 9)
+  {
+    uint8_t a = galois_multiply(mat.data[0],
+        galois_multiply(mat.data[4], mat.data[8])
+      ^ galois_multiply(mat.data[5], mat.data[7]));
+    uint8_t b = galois_multiply(mat.data[1],
+        galois_multiply(mat.data[3], mat.data[8])
+      ^ galois_multiply(mat.data[5], mat.data[6]));
+    uint8_t c = galois_multiply(mat.data[2],
+        galois_multiply(mat.data[3], mat.data[7])
+      ^ galois_multiply(mat.data[4], mat.data[6]));
+    return a ^ b ^ c;
+  }
 
   uint8_t size = sqrt(mat.length);
   uint8_t accumulator = 0;
