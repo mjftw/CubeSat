@@ -9,33 +9,104 @@
 #include "hamming.h"
 #include "memory_tracker.h"
 #include "convolute.h"
+#include "reed_solomon.h"
+#include "interleave.h"
 
 #define START_SEQUENCE 0x7d
-#define DEFAULT_ADDRESS 0x00
+#define CRC_base 0xA02B
 
-//packet is made according to HDLC frame
-/*
-  1 byte flag
-  1 byte address
-  2 bytes control (extended)
-  information bytes
-  2 bytes CRC
-  1 byte flag
-*/
-
-uint16_t calculate_HDLC_control_field()
+uint8_t calculate_control_field()
 {
   //needs to know packet receive and send numbers
   //TODO
   return 0;
 }
 
-uint16_t calculate_CRC(const uint8_t* data, int length)
+//placese CRC check in the last 2 bytes
+uint16_t calculate_CRC(raw_data rd)
 {
-  //TODO
-  return 0;
+  rd.data[rd.length-2] = 0;
+  rd.data[rd.length-1] = 0;
+
+  raw_data tmp;
+  tmp.length = rd.length;
+  tmp.data = (uint8_t*)alloc_named(tmp.length, "calculate_CRC tmp.data");
+  memcpy(tmp.data, rd.data, tmp.length);
+
+  for(unsigned int i = 0; i < rd.length-2; i++)
+  {
+    for(int j = 7; j >= 0; j--)
+    {
+      if((1 << j) & rd.data[i])
+      {
+        rd.data[i] ^= CRC_base >> (16 - j);
+        rd.data[i+1] ^= CRC_base >> (8 - j);
+        rd.data[i+2] ^= CRC_base >> -j;
+      }
+    }
+  }
+  memcpy(rd.data, tmp.data, rd.length-2);  //copy back except CRC
+  dealloc(tmp.data);
+
+  uint16_t ret = rd.data[rd.length-2] << 8 | rd.data[rd.length-1];
+
+  //printf("%x\n", ret);
+  return ret;
 }
 
+raw_data packet_data(raw_data message, int rs_t)
+{
+  raw_data packeted;
+  //1 byte flag, 1 byte control, 2 bytes CRC
+  packeted.length = message.length + 4;
+  packeted.data = alloc_named(packeted.length, "packet_data packeted.data");
+  packeted.data[0] = START_SEQUENCE;
+  packeted.data[1] = calculate_control_field();
+  memcpy(packeted.data + 2, message.data, message.length);
+  calculate_CRC(packeted);
+
+  /*for(unsigned int i = 0; i < packeted.length; i++)
+    printf("%x ", packeted.data[i]);
+  printf("\n");*/
+
+  raw_data rs_enc = rs_encode(packeted, rs_t);
+  raw_data conv = convolute(rs_enc);
+  interleave(conv);
+
+  dealloc(packeted.data);
+  dealloc(rs_enc.data);
+  return conv;
+}
+
+uint8_t unpacket_data(raw_data received, raw_data* message, int rs_t)
+{
+  deinterleave(received);
+  raw_data deconv = deconvolute(received, NULL);
+  raw_data decoded;
+  uint8_t success = rs_decode(deconv, &decoded, rs_t, NULL);
+  if(!success)
+    return 0;
+
+  /*uint16_t CRC_received = (decoded.data[decoded.length-2] << 8)
+    | decoded.data[decoded.length-1];
+  uint16_t CRC = calculate_CRC(decoded);  //recalculate CRC independently
+
+  message->length = decoded.length - 4;
+  message->data = (uint8_t*)alloc_named(message->length, "unpacket_data ret.data");
+  memcpy(message->data, decoded.data + 2, message->length);*/
+
+  /*for(unsigned int i = 0; i < decoded.length; i++)
+    printf("%x ", decoded.data[i]);
+  printf("\n");*/
+
+  dealloc(deconv.data);
+  dealloc(decoded.data);
+  return success;
+}
+
+
+
+/*
 //for now data has to be 64 bytes long, might change in future
 //packets can't be made and sent out of sequence because HDLC control field has
 //state and counts
@@ -72,7 +143,7 @@ int read_packet(raw_data* ret, const packet* p)
   }
 }
 
-encoded_packet encode(const packet* p)
+raw_data encode(raw_data p)
 {
   raw_data ret;
   raw_data pkt;
@@ -81,9 +152,13 @@ encoded_packet encode(const packet* p)
   //ret = encode_block(pkt);
   ret = convolute(pkt);
   return ret;
+  raw_data ret;
+  ret.length = 0;
+  ret.data = NULL;
+  return ret;
 }
 
-packet decode(encoded_packet p, int* bit_errors)
+raw_data decode(raw_data p, int* bit_errors)
 {
   //raw_data rd = decode_block(p, bit_errors);
   raw_data rd = deconvolute(p, bit_errors);
@@ -91,4 +166,8 @@ packet decode(encoded_packet p, int* bit_errors)
   memcpy(&ret, rd.data, rd.length);
   dealloc(rd.data);
   return ret;
-}
+  raw_data ret;
+  ret.length = 0;
+  ret.data = NULL;
+  return ret;
+}*/

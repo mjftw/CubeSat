@@ -124,7 +124,7 @@ void insert_errors2(uint8_t* block, int length, float BER)
 }
 
 //error inserter is a function to insert errors, so it's easy to change out
-float pass_rate(int num_tests, int num_errors, void (*error_inserter)(uint8_t*, int, int), int interleave_data)
+/*float pass_rate(int num_tests, int num_errors, void (*error_inserter)(uint8_t*, int, int), int interleave_data)
 {
   int successes = 0;
   for(unsigned int i = 0; i < num_tests; i++)
@@ -159,13 +159,85 @@ float pass_rate(int num_tests, int num_errors, void (*error_inserter)(uint8_t*, 
       successes++;
   }
   return (float)successes / (float)num_tests;
+}*/
+
+//counts the symbol errors and returns 1 if symbol errors <= t
+int is_correctible(raw_data a, raw_data b, int t, int show_se)
+{
+  assert(a.length = b.length);
+  int symbol_errors = 0;
+  for(unsigned int i = 0; i < a.length; i++)
+  {
+    //any symbol errors which exist are in the parity bits- correctible no matter how many there are
+    if((i == a.length - 2*t) && symbol_errors == 0)
+      return 1;
+    if(a.data[i] != b.data[i])
+    {
+      symbol_errors++;
+      if(show_se)
+        printf("position = %i\n", i);
+    }
+  }
+  if(show_se)
+    printf("%i\n", symbol_errors);
+  return symbol_errors <= t;
+}
+
+//uses is_correctible instead of the actual reed_solomon codec to make it faster
+float message_pass_rate_sim(int num_errors_min, int tries_max, float BER, int t)
+{
+  int successes = 0;
+  int errors = 0;
+  int tries = 0;
+
+  while(errors < num_errors_min)
+  {
+
+    raw_data rd;
+    rd.length = 32 + 2*t;
+    rd.data = (uint8_t*)alloc_named(rd.length, "message_pass_rate_sim rd");
+    for(unsigned int i = 0; i < rd.length; i++)
+      rd.data[i] = rand();
+
+    raw_data ep = convolute(rd);
+
+    interleave(ep);  //interleaves data in place
+
+    insert_errors2(ep.data, ep.length, BER);
+
+    deinterleave(ep);
+
+    raw_data deconvoluted = deconvolute(ep, NULL);
+
+    if(is_correctible(rd, deconvoluted, t, 0))
+    {
+      successes++;
+    }
+    else
+    {
+      errors++;
+    }
+
+    dealloc(ep.data);
+    dealloc(deconvoluted.data);
+    dealloc(rd.data);
+    if(tries >= tries_max)
+      break;
+
+    tries++;
+  }
+  return (float)successes / ((float)successes + (float)errors);
 }
 
 //tests the methods used encoding and decoding, uses insert_errors2 to accomodate any bit rate
 float message_pass_rate(int num_tests, float BER)
 {
   int successes = 0;
-  for(unsigned int i = 0; i < num_tests; i++)
+  int errors = 0;
+  int tries = 0;
+  int wrong1 = 0, wrong2 = 0;
+  //for(unsigned int i = 0; i < num_tests; i++)
+  while(errors < 100)
   {
 
     raw_data rd;
@@ -174,7 +246,7 @@ float message_pass_rate(int num_tests, float BER)
     for(unsigned int i = 0; i < 64; i++)
       rd.data[i] = rand();
 
-    int t = 2;
+    int t = 2;  //PYTHON//
 
     //p = make_packet(rd);
     //encoded_packet ep = encode(&p);  //currently convolutional- subject to change
@@ -189,7 +261,11 @@ float message_pass_rate(int num_tests, float BER)
     deinterleave(ep);
 
     raw_data deconvoluted = deconvolute(ep, NULL);
-    raw_data decoded = rs_decode(deconvoluted, t, NULL);
+
+    int isc = is_correctible(rs_encoded, deconvoluted, t, 0);
+
+    raw_data decoded;
+    rs_decode(deconvoluted, &decoded, t, NULL);
 
     //q = decode(ep, NULL);
     if(rd.length != decoded.length)
@@ -198,41 +274,140 @@ float message_pass_rate(int num_tests, float BER)
       printf("rd.length = %i, decoded.length = %i\n", rd.length, decoded.length);
     }
     if(!memcmp(decoded.data, rd.data, rd.length))
+    {
+      if(!isc)
+        wrong1++;
+      //if(!isc)
+      //  is_correctible(rs_encoded, deconvoluted, t, 1);
+      //assert(isc);
       successes++;
+    }
+    else
+    {
+      if(isc)
+        wrong2++;
+      //assert(!isc);
+      errors++;
+    }
 
     dealloc(ep.data);
     dealloc(rs_encoded.data);
     dealloc(deconvoluted.data);
     dealloc(decoded.data);
     dealloc(rd.data);
+    if(tries >= num_tests)
+    {
+      printf("tries = %i, errors = %i\n", tries, errors);
+      break;
+    }
+    tries++;
   }
-  return (float)successes / (float)num_tests;
+  //return (float)successes / (float)num_tests;
+  printf("wrong1 = %i\n", wrong1);
+  printf("wrong2 = %i\n", wrong2);
+  printf("tests = %i\n", successes + errors);
+  return (float)successes / ((float)successes + (float)errors);
+}
+
+float time_function()
+{
+  time_t now = time(NULL);
+  unsigned int runs = 0;
+  unsigned int time_length = 10;  //seconds
+  while(time(NULL) == now);
+  now++;
+
+  //setup for funciton here
+  raw_data rd;
+  rd.length = 64;
+  rd.data = (uint8_t*)alloc_named(rd.length, "time_function rd.data");
+
+  while(time(NULL) - time_length < now)
+  {
+    raw_data rd2 = packet_data(rd, 4);
+    dealloc(rd2.data);
+    runs++;
+  }
+
+  //setdown for function here
+  dealloc(rd.data);
+
+  return (float)time_length / (float)runs;
 }
 
 int main(int argc, char** argv)
 {
-  //purpose of main function- parse arguments and run argv[1] tests with BER of argv[2].
+  //purpose of main function- parse arguments and run max argv[1] tests or max errors argv[2] with BER of argv[3].
   //prints the message pass rate for these tests- to be interpreted by python.
   //many tests designed to run in parallel with different arguments
   srand(time(NULL));
 
-  if(argc != 3)
+  time_t start_time = time(NULL);
+
+  //printf("time per coding is %fs\n", time_function());
+  //return 0;
+
+  //this part tests packeting code
+  /*int correct = 0, incorrect1 = 0, incorrect2 = 0;
+  for(unsigned int i = 0; i < 100; i++)
+  {
+    raw_data rd;
+    rd.length = 64;
+    rd.data = (uint8_t*)alloc_named(rd.length, "main rd.data");
+    for(unsigned int i = 0; i < rd.length; i++)
+      rd.data[i] = rand();
+
+    raw_data packet = packet_data(rd, 2);
+
+    //insert errors here
+    insert_errors2(packet.data, packet.length, 0.05);
+    //packet.data[1] = 0xff;
+
+    raw_data received;
+    if(unpacket_data(packet, &received, 2))
+    {
+      if(!memcmp(received.data, rd.data, rd.length))
+        correct++;
+      else
+        incorrect1++;
+    }
+    else
+      if(memcmp(received.data, rd.data, rd.length))
+        correct++;
+      else
+      {
+        incorrect2++;
+        //dealloc(rd.data);
+        //break;
+      }
+
+    dealloc(rd.data);
+  }
+  printf("correct = %i, incorrect1 = %i, incorrect2 = %i\n", correct, incorrect1, incorrect2);*/
+
+
+
+  /*if(argc != 4)
   {
     printf("ERROR: Incorrect number of arguments\n");
     return 0;
   }
 
-  unsigned int num_tests = strtol(argv[1], NULL, 10);
-  float BER = strtof(argv[2], NULL);
+  unsigned int max_num_tests = strtol(argv[1], NULL, 10);
+  unsigned int max_num_errors = strtol(argv[2], NULL, 10);
+  float BER = strtof(argv[3], NULL);
 
   assert(BER >= 0);
 
-  printf("%f", message_pass_rate(num_tests, BER));
+  int t = 0;  //PYTHON
+
+  printf("%f", message_pass_rate(max_num_errors, max_num_tests, BER, t));
+  //printf("%f", message_pass_rate(num_tests, BER));
 
   //print_memory_usage_stats();
 
 
-  return 0;
+  return 0;*/
 
   //printf("%x\n", galois_divide(0x8e, 0x2));
   //return 0;
@@ -257,46 +432,54 @@ int main(int argc, char** argv)
   return 0;*/
 
   //this part tests reed solomon coded_bits
-  /*int t = 4;
-  int error_count = 0;
-  raw_data rd;
-  rd.length = 64;
-  rd.data = (uint8_t*)alloc_named(rd.length, "main rd.data");
-  for(unsigned int i = 0; i < rd.length; i++)
-    rd.data[i] = i;
+  unsigned int false_positives = 0, false_negatives = 0;
+  unsigned int tries = 100000;
+  for(unsigned int j = 0; j < tries; j++)
+  {
+    int t = 4;
+    int error_count = 0;
+    raw_data rd;
+    rd.length = 64;
+    rd.data = (uint8_t*)alloc_named(rd.length, "main rd.data");
+    for(unsigned int i = 0; i < rd.length; i++)
+      rd.data[i] = i;
+    raw_data encoded = rs_encode(rd, t);
 
-  raw_data encoded = rs_encode(rd, t);
+    //printx(encoded);
+    //printf("\n");
+    uint8_t num_errors = rand() % (2 * t);
+    //printf("%i\n", num_errors);
+    for(unsigned int i = 0; i < num_errors; i++)
+      encoded.data[rand() % (rd.length + 2 * t)] = rand();
 
-  printx(encoded);
-  printf("\n");
+    //printx(encoded);
+    //printf("\n");
 
-  encoded.data[5] ^= 0x1;
-  encoded.data[11] ^= 0x45;
-  encoded.data[3] ^= 0x3;
-  encoded.data[12] = 3;
+    raw_data decoded;
+    uint8_t success = rs_decode(encoded, &decoded, t, &error_count);
+    //printf(success ? "rs_decode says decoding was successful\n" : "rs_decode says decoding was not successful\n");
 
-  printx(encoded);
-  printf("\n");
+    //printx(rd);
+    //printf("\n");
+    //printx(decoded);
+    //printf("\n");
+    if(memcmp(rd.data, decoded.data, rd.length) && success)  //different but thinks it's right
+    {
+      false_positives++;
+      //printf("success = %i\n", success);
+    }
+    else if(!memcmp(rd.data, decoded.data, rd.length) && !success)  //same but thinks it's wrong
+      false_negatives++;
 
-  raw_data decoded = rs_decode(encoded, t, &error_count);
-
-  printx(rd);
-  printf("\n");
-  printx(decoded);
-  printf("\n");
-
-  if(memcmp(rd.data, decoded.data, rd.length))
-    printf("Failure!\n");
-  else
-    printf("Success!\n");
-
-
-  dealloc(rd.data);
-  dealloc(encoded.data);
-  dealloc(decoded.data);
-
-  if(allocated() > 0)
-    named_allocation_dump();*/
+    dealloc(rd.data);
+    dealloc(encoded.data);
+    dealloc(decoded.data);
+  }
+  printf("false_positives = %i\n", false_positives);
+  printf("false_negatives = %i\n", false_negatives);
+  printf("out of %i tries\n", tries);
+  printf("percentage correct = %f\n", (float)(tries - (false_positives + false_negatives)) / (float)tries * 100.0);
+  //printf("RS was correcty %f%% of the time.\n", (float)successes / (float)tries * 100.0);
 
   /*printf("%x\n", galois_multiply(0xc2, 0x2) ^ galois_multiply(0xca, 0x3));
   printf("%x\n", galois_multiply(0xf0, 0x2) ^ galois_multiply(0xd6, 0x3));
@@ -343,32 +526,50 @@ int main(int argc, char** argv)
   //this part tests convolution
   /*srand(time(NULL));
 
-  uint8_t data[128];
-  for(unsigned int i = 0; i < 128; i++)
-    data[i] = rand();
+  while(1)
+  {
+    int failed = 0;
 
-  raw_data rd;
-  rd.data = data;
-  rd.length = 128;
-  raw_data received = convolute(rd);
-  printf("recieved length = %i\n", received.length);
+    uint8_t data[128];
+    for(unsigned int i = 0; i < 128; i++)
+      data[i] = rand();
 
-  insert_errors(received.data, 128, 20);
+    raw_data rd;
+    rd.data = data;
+    rd.length = 128;
+    raw_data received = convolute(rd);
+    printf("recieved length = %i\n", received.length);
 
-  raw_data decoded = deconvolute(received, NULL);
-  printf("decoded length = %i\n", decoded.length);
-  if(!memcmp(rd.data, decoded.data, decoded.length))
-    printf("success!\n");
-  else
-    printf("failure!\n");
+    insert_errors(received.data, 128, 40);
 
-  dealloc(received.data);
-  dealloc(decoded.data);
+    raw_data decoded = deconvolute(received, NULL);
+    printf("decoded length = %i\n", decoded.length);
+    if(!memcmp(rd.data, decoded.data, decoded.length))
+    {
+      continue;
+    }
+    else
+    {
+      printf("failure!\n");
+      failed = 1;
+    }
 
-  printf("peak number of paths considered = %i\n", get_peak_num_paths_considered());
+    for(unsigned int i = 0; i < decoded.length; i++)
+    {
+      printf("%x", decoded.data[i] ^ rd.data[i]);
+    }
+    printf("\n\n");
 
-  print_memory_usage_stats();
+    dealloc(received.data);
+    dealloc(decoded.data);
 
+    if(failed)
+      break;
+
+    //printf("peak number of paths considered = %i\n", get_peak_num_paths_considered());
+
+    //print_memory_usage_stats();
+  }
   return 0;*/
 
 
@@ -521,6 +722,9 @@ int main(int argc, char** argv)
   printf("Average time for single test (encode + errors + decode) = %f\n", (float)(time(NULL) - t) / (100.0 * (float)num_tests * 4.0));
   fclose(fp);
   print_memory_usage_stats();*/
+  if(allocated() > 0)
+    named_allocation_dump();
+  printf("Time taken was %is\n", time(NULL) - start_time);
   return 0;
 
 }

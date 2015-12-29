@@ -59,6 +59,29 @@ void* alloc(unsigned int size)
   return ptr;
 }
 
+void dealloc_named(void* ptr, const char* name)
+{
+  //reverse search-- assume last to be allocated will be first to be freed
+  dealloc_calls++;
+  for(int i = total_allocated-1; i >= 0; i--)
+  {
+    if(allocations[i].ptr == ptr)
+    {
+      total_allocated_space -= allocations[i].size;
+      free(ptr);
+      total_allocated--;
+      //move last in list into space- makes order less ideal but easier than moving all
+      //efficiency is not a main concern here, these commands can be bypassed if need be.
+      memcpy(&(allocations[i]), &(allocations[total_allocated]), sizeof(mem_alloc));
+      return;
+    }
+  }
+  printf("ERROR: dealloc called with non- allocated pointer as argument\n");
+  printf(name);
+  printf(": %p\n", ptr);
+  assert(0);  //should never reach here
+}
+
 //dealloc can be used in place of free
 void dealloc(void* ptr)
 {

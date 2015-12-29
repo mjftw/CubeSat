@@ -19,6 +19,4 @@ typedef struct
   int length;
 } raw_data;
 
-typedef raw_data encoded_packet;
-
 #endif  //DATATYPES_H

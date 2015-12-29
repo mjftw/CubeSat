@@ -2,7 +2,7 @@ import subprocess
 import sys
 import time
 
-num_tests = "1000"  #string to pass to api_test.exe
+num_tests = "10000"  #string to pass to api_test.exe
 num_cores = 4
 
 #arguments to run.py is csv file for which SNRs to look up BERs to run

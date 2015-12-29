@@ -11,14 +11,19 @@
 #include "datatypes.h"
 
 //makes packet and calculates necessary values for AX25 etc
-packet make_packet(const raw_data data);
+//packet make_packet(const raw_data data);
 //takes a packet, and makes the data, returns true if successful or false if not.
 //Reasons for returning false could be incorrect CRC etc
 //if 0 is returned, raw_data returned is invalid
-int read_packet(raw_data* ret, const packet* p);  //raw data is output, packet is input
+//int read_packet(raw_data* ret, raw_data p);  //raw data is output, packet is input
 
 //encode and decode with Hamming(4,7)
-encoded_packet encode(const packet* p);
-packet decode(encoded_packet p, int* bit_errors);
+//raw_data encode(const packet* p);
+//packet decode(raw_data p, int* bit_errors);
+
+raw_data packet_data(raw_data message, int rs_t);
+
+//returns 1 if CRC matches
+uint8_t unpacket_data(raw_data received, raw_data* ret, int rs_t);
 
 #endif  //PACKET_H
