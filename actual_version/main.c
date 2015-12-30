@@ -313,26 +313,31 @@ float time_function()
 {
   time_t now = time(NULL);
   unsigned int runs = 0;
-  unsigned int time_length = 10;  //seconds
+  unsigned int time_length = 1;  //seconds
   while(time(NULL) == now);
   now++;
+  int t = 2;
 
   //setup for funciton here
   raw_data rd;
   rd.length = 64;
   rd.data = (uint8_t*)alloc_named(rd.length, "time_function rd.data");
 
+  raw_data rd2 = packet_data(rd, t);
+  insert_errors2(rd2.data, rd2.length, 0.01);
+  raw_data rd3;
+
   while(time(NULL) - time_length < now)
   {
-    raw_data rd2 = packet_data(rd, 4);
-    dealloc(rd2.data);
+    unpacket_data(rd2, &rd3, t);
+    dealloc(rd3.data);
     runs++;
   }
 
   //setdown for function here
   dealloc(rd.data);
 
-  return (float)time_length / (float)runs;
+  return (float)runs / (float)time_length;
 }
 
 int main(int argc, char** argv)
@@ -344,7 +349,7 @@ int main(int argc, char** argv)
 
   time_t start_time = time(NULL);
 
-  //printf("time per coding is %fs\n", time_function());
+  printf("codings per second is %fs\n", time_function());
   //return 0;
 
   //this part tests packeting code
@@ -433,7 +438,8 @@ int main(int argc, char** argv)
 
   //this part tests reed solomon coded_bits
   unsigned int false_positives = 0, false_negatives = 0;
-  unsigned int tries = 100000;
+  unsigned int tries = 10000;
+  unsigned int correct = 0;
   for(unsigned int j = 0; j < tries; j++)
   {
     int t = 4;
@@ -471,6 +477,9 @@ int main(int argc, char** argv)
     else if(!memcmp(rd.data, decoded.data, rd.length) && !success)  //same but thinks it's wrong
       false_negatives++;
 
+    if(!memcmp(rd.data, decoded.data, rd.length))
+       correct++;
+
     dealloc(rd.data);
     dealloc(encoded.data);
     dealloc(decoded.data);
@@ -479,6 +488,7 @@ int main(int argc, char** argv)
   printf("false_negatives = %i\n", false_negatives);
   printf("out of %i tries\n", tries);
   printf("percentage correct = %f\n", (float)(tries - (false_positives + false_negatives)) / (float)tries * 100.0);
+  printf("num_correct = %i\n", correct);
   //printf("RS was correcty %f%% of the time.\n", (float)successes / (float)tries * 100.0);
 
   /*printf("%x\n", galois_multiply(0xc2, 0x2) ^ galois_multiply(0xca, 0x3));

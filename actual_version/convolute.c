@@ -8,8 +8,6 @@
 
 //currently uses (2,1,4) convolution
 
-int peak_num_paths_considered = 0;
-
 //inserts a bit into the encoder state
 void insert_bit(uint8_t* encoder_state, uint8_t bit)
 {
@@ -221,8 +219,6 @@ raw_data deconvolute(raw_data rd, int* bit_error_count)
       viterbi_path* addr_of_new_path = get_unused_path(paths, actual_paths);
       split_viterbi_path(paths[i], &(paths[num_paths_being_considered]), addr_of_new_path, encoded_bits);
       num_paths_being_considered++;
-      if(num_paths_being_considered > peak_num_paths_considered)
-        peak_num_paths_considered = num_paths_being_considered;
       if(num_paths_being_considered > NUM_PATHS_POSSIBLE)
       {
         printf("ERROR: num_paths_being_considered is greater than NUM_PATHS_POSSIBLE\n");
@@ -271,14 +267,4 @@ raw_data deconvolute(raw_data rd, int* bit_error_count)
   dealloc(actual_paths);
 
   return ret;
-}
-
-unsigned int get_peak_num_paths_considered()
-{
-  return peak_num_paths_considered;
-}
-
-void reset_peak_num_paths_considered()
-{
-  peak_num_paths_considered = 0;
 }

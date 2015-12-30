@@ -97,6 +97,25 @@ uint8_t determinant(raw_data mat)
 //returns the inverse of a matrix
 raw_data inverse(raw_data mat, uint8_t det)
 {
+  if(mat.length == 1)
+  {
+    raw_data ret;
+    ret.length = 1;
+    ret.data = (uint8_t*)alloc_named(1, "inverse ret.data 1");
+    ret.data[0] = galois_divide(1, mat.data[0]);
+    return ret;
+  }
+  if(mat.length == 4)
+  {
+    raw_data ret;
+    ret.length = 4;
+    ret.data = (uint8_t*)alloc_named(4, "inverse ret.data 2");
+    ret.data[0] = galois_divide(mat.data[3], det);
+    ret.data[1] = galois_divide(mat.data[1], det);
+    ret.data[2] = galois_divide(mat.data[2], det);
+    ret.data[3] = galois_divide(mat.data[0], det);
+    return ret;
+  }
   raw_data cofactor;
   cofactor.length = mat.length;
   cofactor.data = (uint8_t*)alloc_named(cofactor.length, "inverse cofactor");
@@ -108,7 +127,7 @@ raw_data inverse(raw_data mat, uint8_t det)
     for(uint8_t j = 0; j < size; j++)
     {
       raw_data sub_mat = sub_matrix(mat, i, j);
-      cofactor.data[i * size + j] = determinant(sub_mat);
+      cofactor.data[i * size + j] = determinant(sub_mat);  //make this more efficient- perhaps combine determinant into inverse if inverse will be needed later.
       dealloc(sub_mat.data);
     }
   }
