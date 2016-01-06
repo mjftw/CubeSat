@@ -316,7 +316,7 @@ float time_function()
   unsigned int time_length = 1;  //seconds
   while(time(NULL) == now);
   now++;
-  int t = 2;
+  int t = 4;
 
   //setup for funciton here
   raw_data rd;
@@ -324,7 +324,7 @@ float time_function()
   rd.data = (uint8_t*)alloc_named(rd.length, "time_function rd.data");
 
   raw_data rd2 = packet_data(rd, t);
-  insert_errors2(rd2.data, rd2.length, 0.01);
+  insert_errors2(rd2.data, rd2.length, 0.05);
   raw_data rd3;
 
   while(time(NULL) - time_length < now)
@@ -340,6 +340,111 @@ float time_function()
   return (float)runs / (float)time_length;
 }
 
+typedef struct
+{
+  unsigned int length;
+  float* data;
+} table_t;
+
+table_t read_snr_ber()
+{
+  FILE* snr_ber = fopen("SNR_BER.csv", "r");
+  fseek(snr_ber, 0, SEEK_END);
+  unsigned int length = ftell(snr_ber);
+  fseek(snr_ber, 0, SEEK_SET);
+
+  char* buffer = (char*)malloc(length);
+  fread(buffer, length, 1, snr_ber);
+
+  unsigned int lines = 0;
+  for(unsigned int i = 0; i < length; i++)
+    if(buffer[i] == '\n')
+      lines++;
+
+  float* table = (float*)malloc(lines * sizeof(float) * 2);
+
+  char tmp[16];
+  int j = 0;
+  int table_index = 0;
+  for(unsigned int i = 0; i < length; i++)
+  {
+    if(buffer[i] == ',' || buffer[i] == '\n')
+    {
+      tmp[j] = '\0';
+      table[table_index++] = atof(tmp);
+      j = 0;
+    }
+    else
+      tmp[j++] = buffer[i];
+  }
+  free(buffer);
+  fclose(snr_ber);
+  table_t ret;
+  ret.length = lines;
+  ret.data = table;
+  return ret;
+}
+
+float table_lookup(table_t* table, float value)
+{
+  for(unsigned int i = 2; i < table->length * 2; i += 2)
+  {
+    //printf("%f\n", table->data[i]);
+    if(table->data[i] >= value && table->data[i-2] < value)
+    {
+      return table->data[i-1];
+    }
+  }
+  return 0;
+}
+
+float reverse_table_lookup(table_t* table, float value)
+{
+  for(unsigned int i = 1; i < table->length * 2 - 1; i += 2)
+  {
+    //printf("%f\n", table->data[i]);
+    if(table->data[i] <= value && table->data[i-2] > value)
+    {
+      return table->data[i-1];
+    }
+  }
+  return 0;
+}
+
+float coding_gain(float SNR, int t, int tests)
+{
+  table_t snr_ber = read_snr_ber();
+  float BER = table_lookup(&snr_ber, SNR);
+  printf("channel BER = %f\n", BER);
+
+  unsigned int errors = 0;
+  for(unsigned int i = 0; i < tests; i++)
+  {
+    raw_data rd;
+    rd.length = 64;
+    rd.data = (uint8_t*)alloc_named(rd.length, "message_pass_rate rd");
+    for(unsigned int i = 0; i < 64; i++)
+      rd.data[i] = rand();
+
+    raw_data encoded_packet = packet_data(rd, t);
+    insert_errors2(encoded_packet.data, encoded_packet.length, BER);
+    raw_data decoded_packet;
+    unpacket_data(encoded_packet, &decoded_packet, t);
+
+    for(unsigned int j = 0; j < rd.length; j++)
+    {
+      uint8_t tmp = rd.data[j] ^ decoded_packet.data[j];
+      for(unsigned int k = 0; k < 8; k++)
+      {
+        if(1 << k & tmp)
+          errors++;
+      }
+    }
+  }
+  printf("new BER = %f\n", (float)errors / (float)(64 * 8 * tests));
+  return reverse_table_lookup(&snr_ber, (float)errors / (float)(64 * 8 * tests)) - SNR;
+}
+
 int main(int argc, char** argv)
 {
   //purpose of main function- parse arguments and run max argv[1] tests or max errors argv[2] with BER of argv[3].
@@ -348,6 +453,11 @@ int main(int argc, char** argv)
   srand(time(NULL));
 
   time_t start_time = time(NULL);
+
+
+
+  printf("%f\n", coding_gain(0, 2, 1000));
+  return 0;
 
   printf("codings per second is %fs\n", time_function());
   //return 0;

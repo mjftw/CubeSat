@@ -60,10 +60,11 @@ raw_data packet_data(raw_data message, int rs_t)
   //1 byte flag, 1 byte control, 2 bytes CRC
   packeted.length = message.length + 4;
   packeted.data = alloc_named(packeted.length, "packet_data packeted.data");
-  packeted.data[0] = START_SEQUENCE;
+  /*packeted.data[0] = START_SEQUENCE;
   packeted.data[1] = calculate_control_field();
   memcpy(packeted.data + 2, message.data, message.length);
-  calculate_CRC(packeted);
+  calculate_CRC(packeted);*/
+  memcpy(packeted.data, message.data, message.length);
 
   /*for(unsigned int i = 0; i < packeted.length; i++)
     printf("%x ", packeted.data[i]);
@@ -82,8 +83,7 @@ uint8_t unpacket_data(raw_data received, raw_data* message, int rs_t)
 {
   deinterleave(received);
   raw_data deconv = deconvolute(received, NULL);
-  raw_data decoded;
-  uint8_t success = rs_decode(deconv, &decoded, rs_t, NULL);
+  uint8_t success = rs_decode(deconv, message, rs_t, NULL);
   if(!success)
     return 0;
 
@@ -100,7 +100,6 @@ uint8_t unpacket_data(raw_data received, raw_data* message, int rs_t)
   printf("\n");*/
 
   dealloc(deconv.data);
-  dealloc(decoded.data);
   return success;
 }
 
