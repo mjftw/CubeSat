@@ -46,11 +46,12 @@ raw_data encode_block(raw_data rd)
     bytes_needed += 1;
   ret.length = (int)bytes_needed;
   ret.data = (uint8_t*)alloc_named(ret.length, "encode_block ret.data");
-  for(unsigned int i = 0; i < ret.length; i++)
+	unsigned int i;
+  for(i = 0; i < ret.length; i++)
     ret.data[i] = 0;
 
   unsigned int position = 0;  //position will be automatically changed by insert_bits_at_position
-  for(unsigned int i = 0; i < rd.length; i++)
+  for(i = 0; i < rd.length; i++)
   {
     uint8_t first = hamming47_lookup(rd.data[i] >> 4);
     uint8_t second = hamming47_lookup(rd.data[i] & 0xf);
@@ -67,7 +68,8 @@ raw_data decode_block(raw_data rd, int* bit_errors)
   raw_data ret;
   ret.length = (int)((float)rd.length * 4.0 / 7.0) + 1;
   ret.data = (uint8_t*)alloc_named(ret.length, "decode_block ret.data");
-  for(unsigned int i = 0; i < ret.length; i++)
+	unsigned int i;
+  for(i = 0; i < ret.length; i++)
     ret.data[i] = 0;
 
   unsigned int position = 0, decoded_position = 0;

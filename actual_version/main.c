@@ -19,7 +19,8 @@
 
 void printx(raw_data rd)
 {
-  for(unsigned int i = 0; i < rd.length; i++)
+  unsigned int i;
+  for(i = 0; i < rd.length; i++)
   {
     printf("%x ", rd.data[i]);
   }
@@ -27,7 +28,8 @@ void printx(raw_data rd)
 
 void printp(const packet* p)
 {
-  for(unsigned int i = 0; i < sizeof(packet); i++)
+  unsigned int i;
+  for(i = 0; i < sizeof(packet); i++)
   {
     printf("%x ", ((uint8_t*)p)[i]);
   }
@@ -52,7 +54,8 @@ char insert_error(char input, int position)
 void insert_errors(uint8_t* block, int length, int num_errors)
 {
   //int* error_positions = (int*)malloc(num_errors * sizeof(int));
-	for (unsigned int i = 0; i < num_errors; i++)
+  unsigned int i;
+	for (i = 0; i < num_errors; i++)
 	{
 		int error_position = random(0, length * 8);
     /*while(1)
@@ -80,7 +83,8 @@ void insert_errors_dependent(uint8_t* block, int length, int num_errors)
 {
   //int* error_positions = (int*)malloc(num_errors * sizeof(int));
   int last_error_position = random(0, length * 8);
-  for (unsigned int i = 0; i < num_errors; i++)
+  unsigned int i;
+  for (i = 0; i < num_errors; i++)
   {
     int error_position;  //half chance of being inserted next to last error
     if(chance(1.0/2.0))
@@ -110,9 +114,11 @@ int num_errors_inserted = 0;
 
 void insert_errors2(uint8_t* block, int length, float BER)
 {
-  for(unsigned int i = 0; i < length; i++)
+  unsigned int i;
+  for(i = 0; i < length; i++)
   {
-    for(unsigned int j = 0; j < 8; j++)
+    unsigned int j;
+    for(j = 0; j < 8; j++)
     {
       if(chance(BER))
       {
@@ -166,7 +172,8 @@ int is_correctible(raw_data a, raw_data b, int t, int show_se)
 {
   assert(a.length = b.length);
   int symbol_errors = 0;
-  for(unsigned int i = 0; i < a.length; i++)
+  unsigned int i;
+  for(i = 0; i < a.length; i++)
   {
     //any symbol errors which exist are in the parity bits- correctible no matter how many there are
     if((i == a.length - 2*t) && symbol_errors == 0)
@@ -196,7 +203,8 @@ float message_pass_rate_sim(int num_errors_min, int tries_max, float BER, int t)
     raw_data rd;
     rd.length = 32 + 2*t;
     rd.data = (uint8_t*)alloc_named(rd.length, "message_pass_rate_sim rd");
-    for(unsigned int i = 0; i < rd.length; i++)
+    unsigned int i;
+    for(i = 0; i < rd.length; i++)
       rd.data[i] = rand();
 
     raw_data ep = convolute(rd);
@@ -243,7 +251,8 @@ float message_pass_rate(int num_tests, float BER)
     raw_data rd;
     rd.length = 64;
     rd.data = (uint8_t*)alloc_named(rd.length, "message_pass_rate rd");
-    for(unsigned int i = 0; i < 64; i++)
+    unsigned int i;
+    for(i = 0; i < 64; i++)
       rd.data[i] = rand();
 
     int t = 2;  //PYTHON//
@@ -357,7 +366,8 @@ table_t read_snr_ber()
   fread(buffer, length, 1, snr_ber);
 
   unsigned int lines = 0;
-  for(unsigned int i = 0; i < length; i++)
+  unsigned int i;
+  for(i = 0; i < length; i++)
     if(buffer[i] == '\n')
       lines++;
 
@@ -366,7 +376,7 @@ table_t read_snr_ber()
   char tmp[16];
   int j = 0;
   int table_index = 0;
-  for(unsigned int i = 0; i < length; i++)
+  for(i = 0; i < length; i++)
   {
     if(buffer[i] == ',' || buffer[i] == '\n')
     {
@@ -387,7 +397,8 @@ table_t read_snr_ber()
 
 float table_lookup(table_t* table, float value)
 {
-  for(unsigned int i = 2; i < table->length * 2; i += 2)
+  unsigned int i;
+  for(i = 2; i < table->length * 2; i += 2)
   {
     //printf("%f\n", table->data[i]);
     if(table->data[i] >= value && table->data[i-2] < value)
@@ -400,7 +411,8 @@ float table_lookup(table_t* table, float value)
 
 float reverse_table_lookup(table_t* table, float value)
 {
-  for(unsigned int i = 1; i < table->length * 2 - 1; i += 2)
+  unsigned int i;
+  for(i = 1; i < table->length * 2 - 1; i += 2)
   {
     //printf("%f\n", table->data[i]);
     if(table->data[i] <= value && table->data[i-2] > value)
@@ -418,23 +430,26 @@ float coding_gain(float SNR, int t, int tests)
   printf("channel BER = %f\n", BER);
 
   unsigned int errors = 0;
-  for(unsigned int i = 0; i < tests; i++)
+  unsigned int i;
+  for(i = 0; i < tests; i++)
   {
     raw_data rd;
     rd.length = 64;
     rd.data = (uint8_t*)alloc_named(rd.length, "message_pass_rate rd");
-    for(unsigned int i = 0; i < 64; i++)
-      rd.data[i] = rand();
+    unsigned int j;
+    for(j = 0; j < 64; j++)
+      rd.data[j] = rand();
 
     raw_data encoded_packet = packet_data(rd, t);
     insert_errors2(encoded_packet.data, encoded_packet.length, BER);
     raw_data decoded_packet;
     unpacket_data(encoded_packet, &decoded_packet, t);
 
-    for(unsigned int j = 0; j < rd.length; j++)
+    for(j = 0; j < rd.length; j++)
     {
       uint8_t tmp = rd.data[j] ^ decoded_packet.data[j];
-      for(unsigned int k = 0; k < 8; k++)
+      unsigned int k;
+      for(k = 0; k < 8; k++)
       {
         if(1 << k & tmp)
           errors++;
@@ -550,14 +565,16 @@ int main(int argc, char** argv)
   unsigned int false_positives = 0, false_negatives = 0;
   unsigned int tries = 10000;
   unsigned int correct = 0;
-  for(unsigned int j = 0; j < tries; j++)
+  unsigned int j;
+  for(j = 0; j < tries; j++)
   {
     int t = 4;
     int error_count = 0;
     raw_data rd;
     rd.length = 64;
     rd.data = (uint8_t*)alloc_named(rd.length, "main rd.data");
-    for(unsigned int i = 0; i < rd.length; i++)
+    unsigned int i;
+    for(i = 0; i < rd.length; i++)
       rd.data[i] = i;
     raw_data encoded = rs_encode(rd, t);
 
@@ -565,7 +582,7 @@ int main(int argc, char** argv)
     //printf("\n");
     uint8_t num_errors = rand() % (2 * t);
     //printf("%i\n", num_errors);
-    for(unsigned int i = 0; i < num_errors; i++)
+    for(i = 0; i < num_errors; i++)
       encoded.data[rand() % (rd.length + 2 * t)] = rand();
 
     //printx(encoded);
@@ -844,7 +861,7 @@ int main(int argc, char** argv)
   print_memory_usage_stats();*/
   if(allocated() > 0)
     named_allocation_dump();
-  printf("Time taken was %is\n", time(NULL) - start_time);
+  printf("Time taken was %is\n", (int)(time(NULL) - start_time));
   return 0;
 
 }

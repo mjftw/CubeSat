@@ -63,7 +63,8 @@ void dealloc_named(void* ptr, const char* name)
 {
   //reverse search-- assume last to be allocated will be first to be freed
   dealloc_calls++;
-  for(int i = total_allocated-1; i >= 0; i--)
+  int i;
+  for(i = total_allocated-1; i >= 0; i--)
   {
     if(allocations[i].ptr == ptr)
     {
@@ -87,7 +88,8 @@ void dealloc(void* ptr)
 {
   //reverse search-- assume last to be allocated will be first to be freed
   dealloc_calls++;
-  for(int i = total_allocated-1; i >= 0; i--)
+  int i;
+  for(i = total_allocated-1; i >= 0; i--)
   {
     if(allocations[i].ptr == ptr)
     {
@@ -124,7 +126,8 @@ void print_memory_usage_stats()
   if(total_allocated > 0)
   {
     printf("printing all allocated details for memory leak analysis\n");
-    for(unsigned int i = 0; i < total_allocated; i++)
+    unsigned int i;
+    for(i = 0; i < total_allocated; i++)
     {
       printf("%i:\t", i);
       if(allocations[i].name)
@@ -136,7 +139,8 @@ void print_memory_usage_stats()
 
 void named_allocation_dump()
 {
-  for(unsigned int i = 0; i < total_allocated; i++)
+  unsigned int i;
+  for(i = 0; i < total_allocated; i++)
   {
     printf("%i:\t", i);
     if(allocations[i].name)
@@ -147,7 +151,8 @@ void named_allocation_dump()
 
 uint8_t is_valid_pointer(void* ptr)
 {
-  for(unsigned int i = 0; i < total_allocated; i++)
+  unsigned int i;
+  for(i = 0; i < total_allocated; i++)
   {
     if(allocations[i].ptr == ptr)
       return 1;

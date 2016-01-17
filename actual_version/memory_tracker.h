@@ -2,7 +2,7 @@
 #define MEMORY_TRACKER_H
 
 //comment this out to not track memory usage
-#define USE_MEMORY_TRACKING
+//#define USE_MEMORY_TRACKING
 
 //The memory tracker is designed to track memory usage of the entire program and
 //particular algorithms. alloc and dealloc can be used in place of malloc and free.

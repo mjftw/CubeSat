@@ -32,18 +32,19 @@ raw_data convolute(raw_data rd)
   raw_data ret;
   ret.length = rd.length * 2 + 1;  //2:1 ratio (code rate = 1/2) + 8 bits to return encoder to 0 state
   ret.data = (uint8_t*)alloc_named(ret.length, "convolute ret.data");
-  for(unsigned int i = 0; i < ret.length; i++)
+  unsigned int i;
+  for(i = 0; i < ret.length; i++)
     ret.data[i] = 0;
   unsigned int position = 0;
   unsigned int position2 = 0;
-  for(unsigned int i = 0; i < rd.length * 8; i++)
+  for(i = 0; i < rd.length * 8; i++)
   {
     uint8_t bit = get_bits_from_position(rd.data, 1, &position);
     insert_bit(&encoder_state, bit);
     insert_bits_at_position(ret.data, encoder_lookup(encoder_state), 2, &position2);
   }
   //flush encoder
-  for(unsigned int i = 0; i < 4; i++)
+  for(i = 0; i < 4; i++)
   {
     insert_bit(&encoder_state, 0);
     insert_bits_at_position(ret.data, encoder_lookup(encoder_state), 2, &position2);
@@ -82,10 +83,11 @@ void shift_in_bit_viterbi_path(viterbi_path* vp, uint8_t bit, uint8_t coded_bits
 //finds the first path in actual_paths that's not also in paths, and the pointer
 viterbi_path* get_unused_path(viterbi_path** paths, viterbi_path* actual_paths)
 {
-  for(unsigned int i = 0; i < NUM_PATHS_POSSIBLE; i++)
+  unsigned int i, j;
+  for(i = 0; i < NUM_PATHS_POSSIBLE; i++)
   {
     uint8_t in = 0;
-    for(unsigned int j = 0; j < NUM_PATHS_POSSIBLE; j++)
+    for(j = 0; j < NUM_PATHS_POSSIBLE; j++)
     {
       if(paths[j] == &(actual_paths[i]))
       {
@@ -122,13 +124,14 @@ void trim_viterbi_paths(viterbi_path** paths, int* num_paths_being_considered)
 {
   unsigned int metrics_per_state[16];  //only 16 possible states
   uint8_t paths_to_trim[NUM_PATHS_POSSIBLE];  //1 indicates path to be deleted
-  for(unsigned int i = 0; i < NUM_PATHS_POSSIBLE; i++)
+  unsigned int i;
+  for(i = 0; i < NUM_PATHS_POSSIBLE; i++)
     paths_to_trim[i] = 1;  //default is empty or to trim unless otherwise set
-  for(unsigned int i = 0; i < 16; i++)
+  for(i = 0; i < 16; i++)
     metrics_per_state[i] = 0;
 
   //this loop sets metrics_per_state[encoder_state] to maximum of paths being considered
-  for(unsigned int i = 0; i < *num_paths_being_considered; i++)
+  for(i = 0; i < *num_paths_being_considered; i++)
   {
     int metrics_index = paths[i]->encoder_state & 0xf;
     if(metrics_per_state[metrics_index] < paths[i]->metric)
@@ -136,7 +139,7 @@ void trim_viterbi_paths(viterbi_path** paths, int* num_paths_being_considered)
   }
 
   //this loop trimms any paths that are less than the critical
-  for(unsigned int i = 0; i < NUM_PATHS_POSSIBLE; i++)
+  for(i = 0; i < NUM_PATHS_POSSIBLE; i++)
   {
     if(paths[i] == NULL)
       continue;
@@ -150,7 +153,8 @@ void trim_viterbi_paths(viterbi_path** paths, int* num_paths_being_considered)
     else
     {
       uint8_t trimmed = 0;
-      for(unsigned int j = 0; j < i; j++)
+      unsigned int j;
+      for(j = 0; j < i; j++)
       {
         if(paths[j] == NULL)
           continue;
@@ -189,13 +193,14 @@ raw_data deconvolute(raw_data rd, int* bit_error_count)
 {
   viterbi_path* actual_paths;
   actual_paths = (viterbi_path*)alloc_named(sizeof(viterbi_path) * NUM_PATHS_POSSIBLE, "deconvolute actual_paths");
-
-  for(unsigned int i = 0; i < NUM_PATHS_POSSIBLE; i++)
+  unsigned int i;
+  for(i = 0; i < NUM_PATHS_POSSIBLE; i++)
   {
     actual_paths[i].encoder_state = 0;  //always starts at 0
     actual_paths[i].data.length = (rd.length - 1) / 2 + 1;
     actual_paths[i].data.data = (uint8_t*)alloc_named(actual_paths[i].data.length, "deconvolute actual_paths[i].data.data");
-    for(unsigned int j = 0; j < actual_paths[i].data.length; j++)
+    unsigned int j;
+    for(j = 0; j < actual_paths[i].data.length; j++)
       actual_paths[i].data.data[j] = 0;
     actual_paths[i].metric = 0;    //no agreement yet
     actual_paths[i].position = 0;  //bit position in decoded data
@@ -203,7 +208,7 @@ raw_data deconvolute(raw_data rd, int* bit_error_count)
 
   int num_paths_being_considered = 0;
   viterbi_path* paths[NUM_PATHS_POSSIBLE];
-  for(unsigned int i = 0; i < NUM_PATHS_POSSIBLE; i++)
+  for(i = 0; i < NUM_PATHS_POSSIBLE; i++)
     paths[i] = NULL;  //initialised
 
   paths[0] = &(actual_paths[0]);
@@ -214,7 +219,7 @@ raw_data deconvolute(raw_data rd, int* bit_error_count)
   {
     uint8_t encoded_bits = get_bits_from_position(rd.data, 2, &position);
     unsigned int original_npbc = num_paths_being_considered;
-    for(unsigned int i = 0; i < original_npbc; i++)
+    for(i = 0; i < original_npbc; i++)
     {
       viterbi_path* addr_of_new_path = get_unused_path(paths, actual_paths);
       split_viterbi_path(paths[i], &(paths[num_paths_being_considered]), addr_of_new_path, encoded_bits);
@@ -223,13 +228,15 @@ raw_data deconvolute(raw_data rd, int* bit_error_count)
       {
         printf("ERROR: num_paths_being_considered is greater than NUM_PATHS_POSSIBLE\n");
         printf("num_paths_being_considered = %i\n", num_paths_being_considered);
-        for(unsigned int i = 0; i < 16; i++)
+        unsigned int j;
+        for(j = 0; j < 16; j++)
         {
           printf("encoder state %x:\t", i);
-          for(unsigned int j = 0; j < NUM_PATHS_POSSIBLE; j++)
+          unsigned int k;
+          for(k = 0; k < NUM_PATHS_POSSIBLE; k++)
           {
-            if(paths[j] && paths[j]->encoder_state == i)
-              printf("%i:%i, ", j, paths[j]->metric);
+            if(paths[k] && paths[k]->encoder_state == j)
+              printf("%i:%i, ", k, paths[k]->metric);
           }
           printf("\n");
         }
@@ -240,7 +247,7 @@ raw_data deconvolute(raw_data rd, int* bit_error_count)
   }
 
   viterbi_path* best_path = NULL;
-  for(unsigned int i = 0; i < NUM_PATHS_POSSIBLE; i++)
+  for(i = 0; i < NUM_PATHS_POSSIBLE; i++)
   {
     if(best_path == NULL && paths[i] != NULL)  //first path
     {
@@ -262,7 +269,7 @@ raw_data deconvolute(raw_data rd, int* bit_error_count)
   if(bit_error_count != NULL)
     *bit_error_count += ret.length * 8 - best_path->metric;
 
-  for(unsigned int i = 0; i < NUM_PATHS_POSSIBLE; i++)
+  for(i = 0; i < NUM_PATHS_POSSIBLE; i++)
     dealloc(actual_paths[i].data.data);
   dealloc(actual_paths);
 

@@ -33,9 +33,11 @@ uint16_t calculate_CRC(raw_data rd)
   tmp.data = (uint8_t*)alloc_named(tmp.length, "calculate_CRC tmp.data");
   memcpy(tmp.data, rd.data, tmp.length);
 
-  for(unsigned int i = 0; i < rd.length-2; i++)
+  unsigned int i;
+  for(i = 0; i < rd.length-2; i++)
   {
-    for(int j = 7; j >= 0; j--)
+    int j;
+    for(j = 7; j >= 0; j--)
     {
       if((1 << j) & rd.data[i])
       {
@@ -66,10 +68,6 @@ raw_data packet_data(raw_data message, int rs_t)
   calculate_CRC(packeted);*/
   memcpy(packeted.data, message.data, message.length);
 
-  /*for(unsigned int i = 0; i < packeted.length; i++)
-    printf("%x ", packeted.data[i]);
-  printf("\n");*/
-
   raw_data rs_enc = rs_encode(packeted, rs_t);
   raw_data conv = convolute(rs_enc);
   interleave(conv);
@@ -94,10 +92,6 @@ uint8_t unpacket_data(raw_data received, raw_data* message, int rs_t)
   message->length = decoded.length - 4;
   message->data = (uint8_t*)alloc_named(message->length, "unpacket_data ret.data");
   memcpy(message->data, decoded.data + 2, message->length);*/
-
-  /*for(unsigned int i = 0; i < decoded.length; i++)
-    printf("%x ", decoded.data[i]);
-  printf("\n");*/
 
   dealloc(deconv.data);
   return success;

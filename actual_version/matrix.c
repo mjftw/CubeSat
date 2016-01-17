@@ -14,9 +14,11 @@
 void print_matrix(raw_data mat)
 {
   uint8_t size = sqrt(mat.length);
-  for(unsigned int i = 0; i < size; i++)
+  unsigned int i;
+  for(i = 0; i < size; i++)
   {
-    for(unsigned int j = 0; j < size; j++)
+    unsigned int j;
+    for(j = 0; j < size; j++)
     {
       int chars = printf("%x ", mat.data[i * size + j]);
       if(chars == 2)
@@ -47,7 +49,8 @@ raw_data sub_matrix(raw_data mat, uint8_t row, uint8_t col)
   uint8_t size = sqrt(mat.length);
 
   uint8_t put_p = 0;
-  for(unsigned int i = 0; i < mat.length; i++)
+  unsigned int i;
+  for(i = 0; i < mat.length; i++)
   {
     if(i % size == col);  //remove
     else if(i / size == row);  //remove
@@ -84,7 +87,8 @@ uint8_t determinant(raw_data mat)
 
   uint8_t size = sqrt(mat.length);
   uint8_t accumulator = 0;
-  for(unsigned int i = 0; i < size; i++)
+  unsigned int i;
+  for(i = 0; i < size; i++)
   {
     raw_data sub_mat = sub_matrix(mat, 0, i);
     accumulator ^= galois_multiply(mat.data[i], determinant(sub_mat));
@@ -119,12 +123,14 @@ raw_data inverse(raw_data mat, uint8_t det)
   raw_data cofactor;
   cofactor.length = mat.length;
   cofactor.data = (uint8_t*)alloc_named(cofactor.length, "inverse cofactor");
-  uint8_t size = sqrt(mat.length);
+  unsigned int size = sqrt(mat.length);
 
   //calculate matrix of cofactors
-  for(uint8_t i = 0; i < size; i++)
+  unsigned int i;
+  for(i = 0; i < size; i++)
   {
-    for(uint8_t j = 0; j < size; j++)
+    unsigned int j;
+    for(j = 0; j < size; j++)
     {
       raw_data sub_mat = sub_matrix(mat, i, j);
       cofactor.data[i * size + j] = determinant(sub_mat);  //make this more efficient- perhaps combine determinant into inverse if inverse will be needed later.
@@ -133,9 +139,10 @@ raw_data inverse(raw_data mat, uint8_t det)
   }
 
   //reflect on diagonal
-  for(uint8_t i = 0; i < size; i++)
+  for(i = 0; i < size; i++)
   {
-    for(uint8_t j = i+1; j < size; j++)
+    unsigned int j;
+    for(j = i+1; j < size; j++)
     {
       uint8_t tmp = at(cofactor, j, i);
       *ptr_at(cofactor, j, i) = at(cofactor, i, j);
@@ -146,7 +153,7 @@ raw_data inverse(raw_data mat, uint8_t det)
   ret.length = mat.length;
   ret.data = (uint8_t*)alloc_named(ret.length, "inverse ret");
 
-  for(unsigned int i = 0; i < cofactor.length; i++)
+  for(i = 0; i < cofactor.length; i++)
     ret.data[i] = galois_divide(cofactor.data[i], det);
 
   dealloc(cofactor.data);
@@ -161,10 +168,12 @@ raw_data mat_vec_multiply(raw_data mat, raw_data vec)
   ret.length = vec.length;
   ret.data = (uint8_t*)alloc_named(ret.length, "mat_vec_multiply ret");
 
-  for(unsigned int i = 0; i < ret.length; i++)
+  unsigned int i;
+  for(i = 0; i < ret.length; i++)
   {
     uint8_t accumulator = 0;
-    for(unsigned int j = 0; j < ret.length; j++)
+    unsigned int j;
+    for(j = 0; j < ret.length; j++)
     {
       accumulator ^= galois_multiply(at(mat, i, j), vec.data[j]);
     }
