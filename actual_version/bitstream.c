@@ -14,7 +14,7 @@ void insert_bits_at_position(uint8_t* data, uint8_t bits, int num_bits, unsigned
   bits_copy >>= bit_position;
   uint8_t mask = 0xff << (8 - num_bits);
   mask >>= bit_position;
-  *data &= ~mask; //TODO: Figure out why this line causes everything to crash and burn.
+  *data &= ~mask;
   //causes free(rd.data) in decode() in packet.c to crash the program but no idea why
   *data |= bits_copy;  //leave rest of byte unaltered
   if(bit_position > 8 - num_bits)
@@ -46,7 +46,6 @@ uint8_t get_bits_from_position(const uint8_t* data, int num_bits, unsigned int* 
   ret &= (1 << num_bits) - 1;
   ret <<= bits_in_next_byte;
 
-  //ret = (data[*position / 8] >> (7 - *position % 8)) & ((1 << bits_left_in_byte) - 1);
   if(bits_in_next_byte > 0)
   {
     //extract more from next byte

@@ -261,7 +261,7 @@ raw_data deconvolute(raw_data rd, int* bit_error_count)
 
   //copy best path into ret
   raw_data ret;
-  ret.length = rd.length/2; //best_path->data.length-1;  //-1 to get rid of extra flush byte
+  ret.length = rd.length / 2;
   ret.data = (uint8_t*)alloc_named(ret.length, "deconvolute ret.data");
   memcpy(ret.data, best_path->data.data, ret.length);
 
@@ -272,6 +272,63 @@ raw_data deconvolute(raw_data rd, int* bit_error_count)
   for(i = 0; i < NUM_PATHS_POSSIBLE; i++)
     dealloc(actual_paths[i].data.data);
   dealloc(actual_paths);
+
+  return ret;
+}
+
+raw_data convolute_constrained(raw_data rd, unsigned int constraint_length)
+{
+  unsigned int i;
+  raw_data ret;
+  unsigned int num_sections = rd.length / constraint_length;
+  if(rd.length / constraint_length * constraint_length != rd.length)  //doesn't fit exactly so one more needed
+    num_sections++;
+  ret.length = rd.length * 2 + num_sections;  //one flush byte for each section
+  ret.data = alloc_named(ret.length, "convolute_constrained ret.data");
+  unsigned int ret_putp = 0;  //put position in ret
+  for(i = 0; i < num_sections; i++)
+  {
+    raw_data tmp;
+    if(i == num_sections-1)
+      tmp.length = rd.length - constraint_length * (num_sections-1);
+    else
+      tmp.length = constraint_length;
+    tmp.data = rd.data + i * constraint_length;
+    raw_data enc_tmp = convolute(tmp);
+    memcpy(ret.data + ret_putp, enc_tmp.data, enc_tmp.length);
+    ret_putp += enc_tmp.length;
+    dealloc_named(enc_tmp.data, "convolute_constrained enc_tmp.data");
+  }
+  return ret;
+}
+
+raw_data deconvolute_constrained(raw_data rd, int* bit_error_count, unsigned int constraint_length)
+{
+  raw_data ret;
+  unsigned int num_sections = rd.length / (constraint_length*2);
+  if(rd.length != num_sections * (constraint_length*2 + 1))
+    num_sections++;
+  ret.length = (rd.length - num_sections) / 2;
+  ret.data = alloc_named(ret.length, "deconvolute_constrained ret.data");
+
+  unsigned int i;
+  unsigned int rd_getp = 0;
+  unsigned int ret_putp = 0;
+  for(i = 0; i < num_sections; i++)
+  {
+    raw_data tmp;
+    if(i == num_sections-1)
+      tmp.length = rd.length - rd_getp;
+    else
+      tmp.length = constraint_length * 2 + 1;
+    tmp.data = rd.data + rd_getp;
+    rd_getp += constraint_length * 2 + 1;
+
+    raw_data dec_tmp = deconvolute(tmp, bit_error_count);
+    memcpy(ret.data + ret_putp, dec_tmp.data, dec_tmp.length);
+    ret_putp += dec_tmp.length;
+    dealloc_named(dec_tmp.data, "deconvolute_constrained dec_tmp.data");
+  }
 
   return ret;
 }

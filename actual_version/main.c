@@ -471,10 +471,10 @@ int main(int argc, char** argv)
 
 
 
-  printf("%f\n", coding_gain(0, 2, 1000));
+  /*printf("%f\n", coding_gain(0, 2, 1000));
   return 0;
 
-  printf("codings per second is %fs\n", time_function());
+  printf("codings per second is %fs\n", time_function());*/
   //return 0;
 
   //this part tests packeting code
@@ -562,7 +562,7 @@ int main(int argc, char** argv)
   return 0;*/
 
   //this part tests reed solomon coded_bits
-  unsigned int false_positives = 0, false_negatives = 0;
+  /*unsigned int false_positives = 0, false_negatives = 0;
   unsigned int tries = 10000;
   unsigned int correct = 0;
   unsigned int j;
@@ -615,7 +615,7 @@ int main(int argc, char** argv)
   printf("false_negatives = %i\n", false_negatives);
   printf("out of %i tries\n", tries);
   printf("percentage correct = %f\n", (float)(tries - (false_positives + false_negatives)) / (float)tries * 100.0);
-  printf("num_correct = %i\n", correct);
+  printf("num_correct = %i\n", correct);*/
   //printf("RS was correcty %f%% of the time.\n", (float)successes / (float)tries * 100.0);
 
   /*printf("%x\n", galois_multiply(0xc2, 0x2) ^ galois_multiply(0xca, 0x3));
@@ -661,53 +661,37 @@ int main(int argc, char** argv)
     named_allocation_dump();*/
 
   //this part tests convolution
-  /*srand(time(NULL));
+  srand(time(NULL));
 
-  while(1)
+  unsigned int j;
+  int failed = 0;
+  int iterations = 1000;
+  for(j = 0; j < iterations; j++)
   {
-    int failed = 0;
-
     uint8_t data[128];
-    for(unsigned int i = 0; i < 128; i++)
+    unsigned int i;
+    for(i = 0; i < 128; i++)
       data[i] = rand();
 
     raw_data rd;
     rd.data = data;
     rd.length = 128;
-    raw_data received = convolute(rd);
-    printf("recieved length = %i\n", received.length);
+    raw_data received = convolute_constrained(rd, 16);
 
-    insert_errors(received.data, 128, 40);
+    insert_errors2(received.data, received.length, 0.02);
 
-    raw_data decoded = deconvolute(received, NULL);
-    printf("decoded length = %i\n", decoded.length);
-    if(!memcmp(rd.data, decoded.data, decoded.length))
-    {
-      continue;
-    }
-    else
-    {
-      printf("failure!\n");
-      failed = 1;
-    }
+    raw_data decoded = deconvolute_constrained(received, NULL, 16);
 
-    for(unsigned int i = 0; i < decoded.length; i++)
+    if(memcmp(rd.data, decoded.data, decoded.length))
     {
-      printf("%x", decoded.data[i] ^ rd.data[i]);
+      failed++;
     }
-    printf("\n\n");
 
     dealloc(received.data);
     dealloc(decoded.data);
-
-    if(failed)
-      break;
-
-    //printf("peak number of paths considered = %i\n", get_peak_num_paths_considered());
-
-    //print_memory_usage_stats();
   }
-  return 0;*/
+  printf("failure_rate = %f\n", (float)failed / (float)iterations);
+  //return 0;
 
 
 
