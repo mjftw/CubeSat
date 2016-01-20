@@ -129,44 +129,6 @@ void insert_errors2(uint8_t* block, int length, float BER)
   }
 }
 
-//error inserter is a function to insert errors, so it's easy to change out
-/*float pass_rate(int num_tests, int num_errors, void (*error_inserter)(uint8_t*, int, int), int interleave_data)
-{
-  int successes = 0;
-  for(unsigned int i = 0; i < num_tests; i++)
-  {
-    raw_data rd;
-    rd.length = 64;
-    rd.data = (uint8_t*)alloc_named(rd.length, "message_pass_rate rd");
-    for(unsigned int i = 0; i < 64; i++)
-      rd.data[i] = 0xff;
-    packet p, q;
-
-    //make packet
-    p = make_packet(rd);
-
-    //encode packet
-    encoded_packet ep = encode(&p);
-
-    if(interleave_data)
-      interleave(ep);
-
-    //simulate lossy trasmission and receiving
-    error_inserter(ep.data, ep.length, num_errors);
-
-    //decode received data
-    if(interleave_data)
-      deinterleave(ep);
-
-    q = decode(ep, NULL);
-    dealloc(ep.data);
-
-    if(!memcmp(&p, &q, sizeof(packet)))
-      successes++;
-  }
-  return (float)successes / (float)num_tests;
-}*/
-
 //counts the symbol errors and returns 1 if symbol errors <= t
 int is_correctible(raw_data a, raw_data b, int t, int show_se)
 {
@@ -460,38 +422,25 @@ float coding_gain(float SNR, int t, int tests)
   return reverse_table_lookup(&snr_ber, (float)errors / (float)(64 * 8 * tests)) - SNR;
 }
 
-int main(int argc, char** argv)
+void test_packeting()
 {
-  //purpose of main function- parse arguments and run max argv[1] tests or max errors argv[2] with BER of argv[3].
-  //prints the message pass rate for these tests- to be interpreted by python.
-  //many tests designed to run in parallel with different arguments
-  srand(time(NULL));
-
-  time_t start_time = time(NULL);
-
-
-
-  /*printf("%f\n", coding_gain(0, 2, 1000));
-  return 0;
-
-  printf("codings per second is %fs\n", time_function());*/
-  //return 0;
-
-  //this part tests packeting code
-  /*int correct = 0, incorrect1 = 0, incorrect2 = 0;
-  for(unsigned int i = 0; i < 100; i++)
+  //tests packeting code.
+  //Also tests for false positives and false negative decoding.
+  int correct = 0, incorrect1 = 0, incorrect2 = 0;
+  unsigned int i;
+  for(i = 0; i < 100; i++)
   {
     raw_data rd;
     rd.length = 64;
     rd.data = (uint8_t*)alloc_named(rd.length, "main rd.data");
-    for(unsigned int i = 0; i < rd.length; i++)
-      rd.data[i] = rand();
+    unsigned int j;
+    for(j = 0; j < rd.length; j++)
+      rd.data[j] = rand();
 
     raw_data packet = packet_data(rd, 2);
 
     //insert errors here
     insert_errors2(packet.data, packet.length, 0.05);
-    //packet.data[1] = 0xff;
 
     raw_data received;
     if(unpacket_data(packet, &received, 2))
@@ -502,67 +451,28 @@ int main(int argc, char** argv)
         incorrect1++;
     }
     else
+    {
       if(memcmp(received.data, rd.data, rd.length))
         correct++;
       else
       {
         incorrect2++;
-        //dealloc(rd.data);
-        //break;
       }
+    }
 
     dealloc(rd.data);
+    dealloc(packet.data);
+    dealloc(received.data);
   }
-  printf("correct = %i, incorrect1 = %i, incorrect2 = %i\n", correct, incorrect1, incorrect2);*/
+  printf("correct = %i\n", correct);
+  printf("false positives = %i\n", incorrect1);
+  printf("false negatives = %i\n", incorrect2);
+}
 
-
-
-  /*if(argc != 4)
-  {
-    printf("ERROR: Incorrect number of arguments\n");
-    return 0;
-  }
-
-  unsigned int max_num_tests = strtol(argv[1], NULL, 10);
-  unsigned int max_num_errors = strtol(argv[2], NULL, 10);
-  float BER = strtof(argv[3], NULL);
-
-  assert(BER >= 0);
-
-  int t = 0;  //PYTHON
-
-  printf("%f", message_pass_rate(max_num_errors, max_num_tests, BER, t));
-  //printf("%f", message_pass_rate(num_tests, BER));
-
-  //print_memory_usage_stats();
-
-
-  return 0;*/
-
-  //printf("%x\n", galois_divide(0x8e, 0x2));
-  //return 0;
-
-  //printf("%x\n", galois_divide(0x6, 0x2));
-  //printf("%x\n", galois_divide(0x7, 0x3));
-  //printf("%x\n", galois_multiply(0x4, 0x5));
-  //printf("%x\n", galois_multiply(0xf4, 0x3));
-  //return 0;
-
-  //printf("%x\n", galois_multiply(0x1a, 0xa1) ^ galois_multiply(0x13, 0x45));
-  //return 0;
-
-  /*for(unsigned int i = 0; i < 256; i++)
-  {
-    for(unsigned int j = 0; j < 256; j++)
-    {
-      if((i ^ j) == 0x3)
-        printf("%x %x\n", i, j);
-    }
-  }
-  return 0;*/
-
+void test_reed_solomon()
+{
   //this part tests reed solomon coded_bits
-  /*unsigned int false_positives = 0, false_negatives = 0;
+  unsigned int false_positives = 0, false_negatives = 0;
   unsigned int tries = 10000;
   unsigned int correct = 0;
   unsigned int j;
@@ -578,28 +488,16 @@ int main(int argc, char** argv)
       rd.data[i] = i;
     raw_data encoded = rs_encode(rd, t);
 
-    //printx(encoded);
-    //printf("\n");
     uint8_t num_errors = rand() % (2 * t);
-    //printf("%i\n", num_errors);
     for(i = 0; i < num_errors; i++)
       encoded.data[rand() % (rd.length + 2 * t)] = rand();
 
-    //printx(encoded);
-    //printf("\n");
-
     raw_data decoded;
     uint8_t success = rs_decode(encoded, &decoded, t, &error_count);
-    //printf(success ? "rs_decode says decoding was successful\n" : "rs_decode says decoding was not successful\n");
 
-    //printx(rd);
-    //printf("\n");
-    //printx(decoded);
-    //printf("\n");
     if(memcmp(rd.data, decoded.data, rd.length) && success)  //different but thinks it's right
     {
       false_positives++;
-      //printf("success = %i\n", success);
     }
     else if(!memcmp(rd.data, decoded.data, rd.length) && !success)  //same but thinks it's wrong
       false_negatives++;
@@ -615,12 +513,13 @@ int main(int argc, char** argv)
   printf("false_negatives = %i\n", false_negatives);
   printf("out of %i tries\n", tries);
   printf("percentage correct = %f\n", (float)(tries - (false_positives + false_negatives)) / (float)tries * 100.0);
-  printf("num_correct = %i\n", correct);*/
-  //printf("RS was correcty %f%% of the time.\n", (float)successes / (float)tries * 100.0);
+  printf("num_correct = %i\n", correct);
+}
 
-  /*printf("%x\n", galois_multiply(0xc2, 0x2) ^ galois_multiply(0xca, 0x3));
-  printf("%x\n", galois_multiply(0xf0, 0x2) ^ galois_multiply(0xd6, 0x3));
+void print_matrix(raw_data rd);  //gives access to private function in matrices.c
 
+void test_matrices()
+{
   //this part tests matrices
   raw_data mat;
   mat.length = 4;
@@ -637,12 +536,9 @@ int main(int argc, char** argv)
   test.data = test_data;
 
   printx(mat_vec_multiply(mat, test));
-  return 0;
 
-  //printf("%x\n", galois_multiply(0x2a, 0x2a));
-  //printf("%x\n", galois_multiply(0x4f, 0x52));
-
-  for(unsigned int i = 0; i < mat.length; i++)
+  unsigned int i;
+  for(i = 0; i < mat.length; i++)
   {
     mat.data[i] = rand();
   }
@@ -656,13 +552,11 @@ int main(int argc, char** argv)
 
   dealloc(mat.data);
   dealloc(mat2.data);
+}
 
-  if(allocated() > 0)
-    named_allocation_dump();*/
-
+void test_convolution()
+{
   //this part tests convolution
-  srand(time(NULL));
-
   unsigned int j;
   int failed = 0;
   int iterations = 1000;
@@ -691,105 +585,72 @@ int main(int argc, char** argv)
     dealloc(decoded.data);
   }
   printf("failure_rate = %f\n", (float)failed / (float)iterations);
-  //return 0;
+}
 
-
-
+void test_memory()
+{
   //this part tests memory_tracker
-  /*int* a[100];
-  for(unsigned int i = 0; i < 100; i++)
+  int* a[100];
+  unsigned int i;
+  for(i = 0; i < 100; i++)
   {
     a[i] = (int*)alloc(rand() % 100);
     printf("total_allocated_space = %i\n", allocated());
     printf("peak_allocated_space = %i\n", peak_allocated());
   }
-  for(unsigned int i = 0; i < 100; i++)
+  for(i = 0; i < 100; i++)
   {
     dealloc(a[i]);
     printf("total_allocated_space = %i\n", allocated());
     printf("peak_allocated_space = %i\n", peak_allocated());
   }
+}
 
-  return 0;*/
-
-
-  //this part tests convolution
-  /*raw_data rd;
-  int starting_length = 5;
-  rd.length = starting_length;
-  rd.data = (uint8_t*)malloc(starting_length);
-  for(unsigned int i = 0; i < starting_length; i++)
-    rd.data[i] = 0;
-  rd.data[0] = 0xb0;
-
-  for(unsigned int i = 0; i < rd.length; i++)
-    printf("%x ", rd.data[i]);
-  printf("\n");
-
-  raw_data returned = convolute(rd);
-
-  for(unsigned int i = 0; i < returned.length; i++)
-    printf("%x ", returned.data[i]);
-  printf("\n");
-
-  raw_data decoded = deconvolute(returned, NULL);
-
-  for(unsigned int i = 0; i < returned.length; i++)
-    printf("%x ", returned.data[i]);
-  printf("\n");
-
-  free(rd.data);
-  free(returned.data);
-  free(decoded.data);
-  return 0;*/
-
-
+void test_bitstream()
+{
   //This part tests bitstreams
-  /*for(int j = 0; j < 100; j++)
+  int j;
+  for(j = 0; j < 100; j++)
   {
     uint8_t* data = (uint8_t*)malloc(256);
-    for(unsigned int i = 0; i < 256; i++)
+    unsigned int i;
+    for(i = 0; i < 256; i++)
       data[i] = i;
 
     uint8_t* data2 = (uint8_t*)malloc(256);
-    for(unsigned int i = 0; i < 256; i++)
+    for(i = 0; i < 256; i++)
       data2[i] = 0;
 
-    int position = 0, position2 = 0;
-    for(unsigned int i = 0; position < 255 * 8; i++)
+    unsigned int position = 0, position2 = 0;
+    for(i = 0; position < 255 * 8; i++)
     {
       int check_size = rand() % 8 + 1;
       uint8_t bits = get_bits_from_position(data, check_size, &position);
       insert_bits_at_position(data2, bits, check_size, &position2);
     }
 
-    //printf("check_size = %i\n", check_size);
     if(!memcmp(data, data2, 128))
     {
     }
     else
     {
       printf("failure\n");
-      for(unsigned int i = 0; i < 256; i++)
+      for(i = 0; i < 256; i++)
         printf("%x ", data2[i]);
     }
-    //printf("\n\n");
 
     free(data);
     free(data2);
   }
+}
 
-  //for(unsigned int i = 0; i < 256; i++)
-  //  printf("%x ", data2[i]);
-  //printf("\n");
-
-  return 0;*/
-
-
+void test_interleaving()
+{
   //This part tests interleaving
-  /*uint8_t message[51];
+  uint8_t message[51];
   uint8_t check_message[51];
-  for(unsigned int i = 0; i < 51; i++)
+  unsigned int i;
+  for(i = 0; i < 51; i++)
     message[i] = rand();
   memcpy(check_message, message, 51);
 
@@ -797,30 +658,63 @@ int main(int argc, char** argv)
   rd.length = 51;
   rd.data = message;
 
-  for(unsigned int i = 0; i < 51; i++)
+  for(i = 0; i < 51; i++)
     printf("%x ", rd.data[i] & 0xff);
   printf("\n");
 
   interleave(rd);
 
-  for(unsigned int i = 0; i < 51; i++)
+  for(i = 0; i < 51; i++)
     printf("%x ", rd.data[i] & 0xff);
   printf("\n");
 
   deinterleave(rd);
 
-  for(unsigned int i = 0; i < 51; i++)
+  for(i = 0; i < 51; i++)
     printf("%x ", rd.data[i] & 0xff);
   printf("\n");
 
   if(!memcmp(message, check_message, 51))
-    printf("success!");
+    printf("success!\n");
   else
-    printf("Failure!");
-  return 0;*/
+    printf("Failure!\n");
+}
 
-  /*srand(time(NULL));
+int main(int argc, char** argv)
+{
+  //purpose of main function- parse arguments and run max argv[1] tests or max errors argv[2] with BER of argv[3].
+  //prints the message pass rate for these tests- to be interpreted by python.
+  //many tests designed to run in parallel with different arguments
+  srand(time(NULL));
 
+  time_t start_time = time(NULL);
+
+  test_packeting();
+  //test_memory();
+  //test_matrices();
+  //test_bitstream();
+  //test_convolution();
+  //test_reed_solomon();
+  //test_interleaving();
+
+
+  /*if(argc != 4)
+  {
+    printf("ERROR: Incorrect number of arguments\n");
+    return 0;
+  }
+
+  unsigned int max_num_tests = strtol(argv[1], NULL, 10);
+  unsigned int max_num_errors = strtol(argv[2], NULL, 10);
+  float BER = strtof(argv[3], NULL);
+
+  assert(BER >= 0);
+
+  int t = 0;  //PYTHON
+
+  printf("%f", message_pass_rate(max_num_errors, max_num_tests, BER, t));
+
+  return 0;
 
   unsigned int num_tests = 100;
   unsigned int max_errors = 10;

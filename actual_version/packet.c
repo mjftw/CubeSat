@@ -82,8 +82,8 @@ uint8_t unpacket_data(raw_data received, raw_data* message, int rs_t)
   deinterleave(received);
   raw_data deconv = deconvolute(received, NULL);
   uint8_t success = rs_decode(deconv, message, rs_t, NULL);
-  if(!success)
-    return 0;
+  dealloc(deconv.data);
+  return success;
 
   /*uint16_t CRC_received = (decoded.data[decoded.length-2] << 8)
     | decoded.data[decoded.length-1];
@@ -92,9 +92,6 @@ uint8_t unpacket_data(raw_data received, raw_data* message, int rs_t)
   message->length = decoded.length - 4;
   message->data = (uint8_t*)alloc_named(message->length, "unpacket_data ret.data");
   memcpy(message->data, decoded.data + 2, message->length);*/
-
-  dealloc(deconv.data);
-  return success;
 }
 
 
