@@ -278,6 +278,8 @@ raw_data deconvolute(raw_data rd, int* bit_error_count)
 
 raw_data convolute_constrained(raw_data rd, unsigned int constraint_length)
 {
+  if(constraint_length >= rd.length)
+    return convolute(rd);
   unsigned int i;
   raw_data ret;
   unsigned int num_sections = rd.length / constraint_length;
@@ -304,9 +306,11 @@ raw_data convolute_constrained(raw_data rd, unsigned int constraint_length)
 
 raw_data deconvolute_constrained(raw_data rd, int* bit_error_count, unsigned int constraint_length)
 {
+  if(constraint_length >= rd.length)
+    return deconvolute(rd, bit_error_count);
   raw_data ret;
-  unsigned int num_sections = rd.length / (constraint_length*2);
-  if(rd.length != num_sections * (constraint_length*2 + 1))
+  unsigned int num_sections = 0;
+  while(num_sections * (constraint_length*2 + 1) < rd.length)
     num_sections++;
   ret.length = (rd.length - num_sections) / 2;
   ret.data = alloc_named(ret.length, "deconvolute_constrained ret.data");
@@ -329,6 +333,5 @@ raw_data deconvolute_constrained(raw_data rd, int* bit_error_count, unsigned int
     ret_putp += dec_tmp.length;
     dealloc_named(dec_tmp.data, "deconvolute_constrained dec_tmp.data");
   }
-
   return ret;
 }

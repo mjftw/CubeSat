@@ -56,7 +56,7 @@ uint16_t calculate_CRC(raw_data rd)
   return ret;
 }
 
-raw_data packet_data(raw_data message, int rs_t)
+raw_data packet_data(raw_data message, int rs_t, unsigned int conv_constraint)
 {
   raw_data packeted;
   //1 byte flag, 1 byte control, 2 bytes CRC
@@ -69,7 +69,7 @@ raw_data packet_data(raw_data message, int rs_t)
   memcpy(packeted.data, message.data, message.length);
 
   raw_data rs_enc = rs_encode(packeted, rs_t);
-  raw_data conv = convolute(rs_enc);
+  raw_data conv = convolute_constrained(rs_enc, conv_constraint);
   interleave(conv);
 
   dealloc(packeted.data);
@@ -77,10 +77,10 @@ raw_data packet_data(raw_data message, int rs_t)
   return conv;
 }
 
-uint8_t unpacket_data(raw_data received, raw_data* message, int rs_t)
+uint8_t unpacket_data(raw_data received, raw_data* message, int rs_t, unsigned int conv_constraint)
 {
   deinterleave(received);
-  raw_data deconv = deconvolute(received, NULL);
+  raw_data deconv = deconvolute_constrained(received, NULL, conv_constraint);
   uint8_t success = rs_decode(deconv, message, rs_t, NULL);
   dealloc(deconv.data);
   return success;

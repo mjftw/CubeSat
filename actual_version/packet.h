@@ -21,9 +21,9 @@
 //raw_data encode(const packet* p);
 //packet decode(raw_data p, int* bit_errors);
 
-raw_data packet_data(raw_data message, int rs_t);
+raw_data packet_data(raw_data message, int rs_t, unsigned int conv_constraint);
 
 //returns 1 if CRC matches
-uint8_t unpacket_data(raw_data received, raw_data* ret, int rs_t);
+uint8_t unpacket_data(raw_data received, raw_data* ret, int rs_t, unsigned int conv_constraint);
 
 #endif  //PACKET_H

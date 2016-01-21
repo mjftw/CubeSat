@@ -284,23 +284,23 @@ float time_function()
 {
   time_t now = time(NULL);
   unsigned int runs = 0;
-  unsigned int time_length = 1;  //seconds
+  unsigned int time_length = 5;  //seconds
   while(time(NULL) == now);
   now++;
   int t = 4;
 
   //setup for funciton here
   raw_data rd;
-  rd.length = 64;
+  rd.length = 128;
   rd.data = (uint8_t*)alloc_named(rd.length, "time_function rd.data");
 
-  raw_data rd2 = packet_data(rd, t);
+  raw_data rd2 = packet_data(rd, t, 4);
   insert_errors2(rd2.data, rd2.length, 0.05);
   raw_data rd3;
 
   while(time(NULL) - time_length < now)
   {
-    unpacket_data(rd2, &rd3, t);
+    unpacket_data(rd2, &rd3, t, 4);
     dealloc(rd3.data);
     runs++;
   }
@@ -402,10 +402,10 @@ float coding_gain(float SNR, int t, int tests)
     for(j = 0; j < 64; j++)
       rd.data[j] = rand();
 
-    raw_data encoded_packet = packet_data(rd, t);
+    raw_data encoded_packet = packet_data(rd, t, 16);
     insert_errors2(encoded_packet.data, encoded_packet.length, BER);
     raw_data decoded_packet;
-    unpacket_data(encoded_packet, &decoded_packet, t);
+    unpacket_data(encoded_packet, &decoded_packet, t, 16);
 
     for(j = 0; j < rd.length; j++)
     {
@@ -422,28 +422,28 @@ float coding_gain(float SNR, int t, int tests)
   return reverse_table_lookup(&snr_ber, (float)errors / (float)(64 * 8 * tests)) - SNR;
 }
 
-void test_packeting()
+void test_packeting(unsigned int tries, unsigned int length, float BER, unsigned int rs_t, unsigned int conv_constraint)
 {
   //tests packeting code.
   //Also tests for false positives and false negative decoding.
   int correct = 0, incorrect1 = 0, incorrect2 = 0;
   unsigned int i;
-  for(i = 0; i < 100; i++)
+  for(i = 0; i < tries; i++)
   {
     raw_data rd;
-    rd.length = 64;
+    rd.length = length;
     rd.data = (uint8_t*)alloc_named(rd.length, "main rd.data");
     unsigned int j;
     for(j = 0; j < rd.length; j++)
       rd.data[j] = rand();
 
-    raw_data packet = packet_data(rd, 2);
+    raw_data packet = packet_data(rd, rs_t, conv_constraint);
 
     //insert errors here
-    insert_errors2(packet.data, packet.length, 0.05);
+    insert_errors2(packet.data, packet.length, BER);
 
     raw_data received;
-    if(unpacket_data(packet, &received, 2))
+    if(unpacket_data(packet, &received, rs_t, conv_constraint))
     {
       if(!memcmp(received.data, rd.data, rd.length))
         correct++;
@@ -689,54 +689,45 @@ int main(int argc, char** argv)
 
   time_t start_time = time(NULL);
 
-  test_packeting();
-  //test_memory();
-  //test_matrices();
-  //test_bitstream();
-  //test_convolution();
-  //test_reed_solomon();
-  //test_interleaving();
-
-
-  /*if(argc != 4)
+  if(argc >= 2)
   {
-    printf("ERROR: Incorrect number of arguments\n");
-    return 0;
+    if(!strcmp(argv[1],"packeting"))
+    {
+      //tries, length, BER, rs_t conv_constraint
+      if(argc != 7)
+        printf("Incorrect argument count for packeting.\n");
+      else
+        test_packeting(atoi(argv[2]), atoi(argv[3]), atof(argv[4]), atoi(argv[5]), atoi(argv[6]));
+    }
+    else if(!strcmp(argv[1], "memory"))
+      test_memory();
+    else if(!strcmp(argv[1], "matrices"))
+      test_matrices();
+    else if(!strcmp(argv[1], "bitstream"))
+      test_bitstream();
+    else if(!strcmp(argv[1], "convolution"))
+      test_convolution();
+    else if(!strcmp(argv[1], "reed_solomon"))
+      test_reed_solomon();
+    else if(!strcmp(argv[1], "interleaving"))
+      test_interleaving();
+    else if(!strcmp(argv[1], "time"))
+      printf("Decoding runs at %f/s\n", time_function());
+    else if(!strcmp(argv[1], "sim"))
+    {
+      if(argc != 6)
+        printf("Incorrect argument count for sim.\n");
+      else
+      {
+        printf("%f", message_pass_rate_sim(atoi(argv[3]), atoi(argv[2]), atof(argv[4]), atoi(argv[5])));
+        return 0;  //return 0 here so as not to print anything else which will prevent interpretation of piped output to float
+      }
+    }
   }
+  else
+    printf("no arguments\n");
 
-  unsigned int max_num_tests = strtol(argv[1], NULL, 10);
-  unsigned int max_num_errors = strtol(argv[2], NULL, 10);
-  float BER = strtof(argv[3], NULL);
-
-  assert(BER >= 0);
-
-  int t = 0;  //PYTHON
-
-  printf("%f", message_pass_rate(max_num_errors, max_num_tests, BER, t));
-
-  return 0;
-
-  unsigned int num_tests = 100;
-  unsigned int max_errors = 10;
-
-  FILE* fp;
-  fp = fopen("default.csv", "w");
-
-  time_t t = time(NULL);
-  fprintf(fp, "num_errors,MPR_independent,MPR_dependent,MPR_independent_interleave,MPR_dependent_interleave\n");
-  for(int errors = 0; errors <= max_errors; errors++)
-  {
-    printf("iteration %i / %i  \r", errors, max_errors);
-    fprintf(fp, "%i,%f,%f,%f,%f\n", errors,
-      pass_rate(num_tests, errors, insert_errors, 0),
-      pass_rate(num_tests, errors, insert_errors_dependent, 0),
-      pass_rate(num_tests, errors, insert_errors, 1),
-      pass_rate(num_tests, errors, insert_errors_dependent, 1));
-  }
-  printf("Total time taken = %is\n", time(NULL) - t);
-  printf("Average time for single test (encode + errors + decode) = %f\n", (float)(time(NULL) - t) / (100.0 * (float)num_tests * 4.0));
-  fclose(fp);
-  print_memory_usage_stats();*/
+  print_memory_usage_stats();
   if(allocated() > 0)
     named_allocation_dump();
   printf("Time taken was %is\n", (int)(time(NULL) - start_time));
