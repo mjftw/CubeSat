@@ -23,7 +23,15 @@
 
 raw_data packet_data(raw_data message, int rs_t, unsigned int conv_constraint);
 
-//returns 1 if CRC matches
-uint8_t unpacket_data(raw_data received, raw_data* ret, int rs_t, unsigned int conv_constraint);
+//returns 1 if CRC matches. If bit_errors is not null and the code is decoded correctly,
+//the codeword will be reconstructed and the number of bit errors counted. This takes more
+//computational power but gives a quality of service metric.
+uint8_t unpacket_data(raw_data received, raw_data* ret, int rs_t, unsigned int conv_constraint, int* bit_errors);
+
+//segments data without reallocation, returns num_segments * raw_data which is allocated
+void segment_data(raw_data rd, unsigned int segment_size, raw_data** ret, unsigned int* num_segments);
+
+//allocates, constructs, and returns concatenated segments
+raw_data concatenate_segments(raw_data* segments, unsigned int num_segments);
 
 #endif  //PACKET_H

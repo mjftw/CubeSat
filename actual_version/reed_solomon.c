@@ -295,6 +295,7 @@ uint8_t rs_decode(raw_data rd, raw_data* ret, int t, int* bit_error_count)
 	error_positions.data = (uint8_t*)alloc_named(error_positions.length, "rs_decode error_positions");
 
 	//sub in all possible values of x in lambda(x) (Chien search)
+	//note: if there is time change the x values to powers- as errors can't be beyond the range of the codeword.
 	uint8_t errors_found = 0;
 	unsigned int x;
 	for(x = 0; x < 256; x++)
@@ -327,7 +328,7 @@ uint8_t rs_decode(raw_data rd, raw_data* ret, int t, int* bit_error_count)
 
 	int j;
 	for(j = 0; j < v; j++)
-		error_locator_pow.data[j] = 1; //galois_multiply(error_locator.data[j], error_locator_pow.data[j]);
+		error_locator_pow.data[j] = 1;
 
 	memcpy(error_locator.data, error_positions.data, error_locator.length);
 	for(i = 0; i < error_locator.length; i++)
@@ -361,44 +362,12 @@ uint8_t rs_decode(raw_data rd, raw_data* ret, int t, int* bit_error_count)
 	memcpy(ret->data, rd.data, ret->length);
 
 	//correct errors in copied code
-	uint8_t corrected = 2;
+	uint8_t corrected = 1;
 	for(i = 0; i < value_vector.length; i++)
 		if(error_positions.data[i] < ret->length)
 			ret->data[error_positions.data[i]] ^= value_vector.data[i];
 		else
 			corrected = 0;
-
-	if(corrected && v == t)
-	{
-		//redo calculation of syndromes divided by decoded code word
-		//syndromes should all be 0 if decoding is correct, otherwise decoding is not correct
-		dealloc_named(syndromes.data, "rs_decode syndromes.data 2");
-		uint8_t all_zeroes = 1;
-		syndromes = get_factorised_generator(t, 1);
-		for(i = 0; i < syndromes.length; i++)
-		{
-			//the accumulator is for adding the terms together
-			uint8_t accumulator = 0;
-			//calculating x^n by multiplying one at a time and doing a reverse loop
-			//is more efficient than throwing away intermediate results
-			uint8_t root_power_n = 1;
-			for(j = ret->length - 1; j >= 0; j--)
-			{
-				accumulator ^= galois_multiply(root_power_n, ret->data[j]);
-				//root_power_n is multiplied after because first factor is x^0 = 1
-				root_power_n = galois_multiply(root_power_n, syndromes.data[i]);
-			}
-			syndromes.data[i] = accumulator;
-			if(accumulator != 0)
-				all_zeroes = 0;
-		}
-
-		//if all syndromes are 0, no errors have occurred.
-		if(all_zeroes)
-			corrected = 3;
-		else
-			corrected = 0;
-	}
 
 	//dealloc all alloced data including that which was returned from functions
 	//called to implement rs_decode

@@ -12,8 +12,52 @@
 #include "reed_solomon.h"
 #include "interleave.h"
 
-#define START_SEQUENCE 0x7d
-#define CRC_base 0xA02B
+#define START_SEQUENCE 0x7e
+uint16_t CRC_base = 0xd3e9;
+
+//segments data without reallocation, returns num_segments * raw_data which is allocated
+void segment_data(raw_data rd, unsigned int segment_size, raw_data** ret, unsigned int* num_segments)
+{
+  if(segment_size >= rd.length)
+  {
+    *num_segments = 1;
+    *ret = (raw_data*)alloc_named(sizeof(raw_data), "segment_data ret");
+    (*ret[0]).length = rd.length;
+    (*ret[0]).data = rd.data;
+    return;
+  }
+  *num_segments = rd.length / segment_size;
+  if(*num_segments * segment_size < rd.length)
+    (*num_segments)++;
+  *ret = (raw_data*)alloc_named(sizeof(raw_data) * *num_segments, "segment_data ret");
+
+  unsigned int i;
+  for(i = 0; i < *num_segments; i++)
+  {
+    (*ret)[i].data = rd.data + segment_size * i;
+    if(i == *num_segments-1)
+      (*ret)[i].length = rd.length - segment_size * i;
+    else
+      (*ret)[i].length = segment_size;
+  }
+}
+
+//allocates, constructs, and returns concatenated segments
+raw_data concatenate_segments(raw_data* segments, unsigned int num_segments)
+{
+  unsigned int i;
+  unsigned int total_length = 0;
+  for(i = 0; i < num_segments; i++)
+    total_length += segments[i].length;
+  raw_data ret;
+  ret.length = total_length;
+  ret.data = (uint8_t*)alloc_named(ret.length, "concatenate_segments ret");
+  for(i = 0; i < num_segments; i++)
+  {
+    memcpy(ret.data + i * segments[0].length, segments[i].data, segments[i].length);  //segments[0].length is always the segment size or packet size
+  }
+  return ret;
+}
 
 uint8_t calculate_control_field()
 {
@@ -61,7 +105,7 @@ raw_data packet_data(raw_data message, int rs_t, unsigned int conv_constraint)
   raw_data packeted;
   //1 byte flag, 1 byte control, 2 bytes CRC
   packeted.length = message.length + 4;
-  packeted.data = alloc_named(packeted.length, "packet_data packeted.data");
+  packeted.data = (uint8_t*)alloc_named(packeted.length, "packet_data packeted.data");
   /*packeted.data[0] = START_SEQUENCE;
   packeted.data[1] = calculate_control_field();
   memcpy(packeted.data + 2, message.data, message.length);
@@ -77,12 +121,23 @@ raw_data packet_data(raw_data message, int rs_t, unsigned int conv_constraint)
   return conv;
 }
 
-uint8_t unpacket_data(raw_data received, raw_data* message, int rs_t, unsigned int conv_constraint)
+uint8_t unpacket_data(raw_data received, raw_data* message, int rs_t, unsigned int conv_constraint, int* bit_errors)
 {
   deinterleave(received);
   raw_data deconv = deconvolute_constrained(received, NULL, conv_constraint);
   uint8_t success = rs_decode(deconv, message, rs_t, NULL);
   dealloc(deconv.data);
+
+  //currently doens't work due to packeting issues- state etc. Also interleave/no interleaving for check must be fixed.
+  /*if(bit_errors != NULL)
+  {
+    raw_data test = packet_data(*message, rs_t, conv_constraint);
+    unsigned int i;
+    for(i = 0; i < test.length; i++)
+    {
+      uint8_t difference = test.data[i] ^ received.data[i];
+    }
+  }*/
   return success;
 
   /*uint16_t CRC_received = (decoded.data[decoded.length-2] << 8)

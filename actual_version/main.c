@@ -163,7 +163,7 @@ float message_pass_rate_sim(int num_errors_min, int tries_max, float BER, int t)
   {
 
     raw_data rd;
-    rd.length = 32 + 2*t;
+    rd.length = 128 + 2*t;
     rd.data = (uint8_t*)alloc_named(rd.length, "message_pass_rate_sim rd");
     unsigned int i;
     for(i = 0; i < rd.length; i++)
@@ -171,11 +171,12 @@ float message_pass_rate_sim(int num_errors_min, int tries_max, float BER, int t)
 
     raw_data ep = convolute(rd);
 
-    interleave(ep);  //interleaves data in place
+    //interleaving not needed as errror insertion is AWGN- faster to not do it
+    //interleave(ep);  //interleaves data in place
 
     insert_errors2(ep.data, ep.length, BER);
 
-    deinterleave(ep);
+    //deinterleave(ep);
 
     raw_data deconvoluted = deconvolute(ep, NULL);
 
@@ -287,20 +288,20 @@ float time_function()
   unsigned int time_length = 5;  //seconds
   while(time(NULL) == now);
   now++;
-  int t = 4;
+  int t = 2;
 
   //setup for funciton here
   raw_data rd;
-  rd.length = 128;
+  rd.length = 64;
   rd.data = (uint8_t*)alloc_named(rd.length, "time_function rd.data");
 
   raw_data rd2 = packet_data(rd, t, 4);
-  insert_errors2(rd2.data, rd2.length, 0.05);
+  insert_errors2(rd2.data, rd2.length, 0.1442);
   raw_data rd3;
 
   while(time(NULL) - time_length < now)
   {
-    unpacket_data(rd2, &rd3, t, 4);
+    unpacket_data(rd2, &rd3, t, 4, NULL);
     dealloc(rd3.data);
     runs++;
   }
@@ -405,7 +406,7 @@ float coding_gain(float SNR, int t, int tests)
     raw_data encoded_packet = packet_data(rd, t, 16);
     insert_errors2(encoded_packet.data, encoded_packet.length, BER);
     raw_data decoded_packet;
-    unpacket_data(encoded_packet, &decoded_packet, t, 16);
+    unpacket_data(encoded_packet, &decoded_packet, t, 16, NULL);
 
     for(j = 0; j < rd.length; j++)
     {
@@ -443,7 +444,7 @@ void test_packeting(unsigned int tries, unsigned int length, float BER, unsigned
     insert_errors2(packet.data, packet.length, BER);
 
     raw_data received;
-    if(unpacket_data(packet, &received, rs_t, conv_constraint))
+    if(unpacket_data(packet, &received, rs_t, conv_constraint, NULL))
     {
       if(!memcmp(received.data, rd.data, rd.length))
         correct++;
@@ -680,6 +681,46 @@ void test_interleaving()
     printf("Failure!\n");
 }
 
+void test_segmentation()
+{
+  printf("testing segmentation\n");
+  unsigned int i;
+  for(i = 0; i < 10000; i++)
+  {
+    raw_data rd;
+    unsigned int segment_size = rand() % 10000;
+    int failure = 0;
+    rd.length = rand() % 10000;
+    rd.data = alloc(rd.length);
+    unsigned int j;
+    for(j = 0; j < rd.length; j++)
+      rd.data[j] = rand();
+    raw_data* segments = NULL;
+    unsigned int num_segments;
+    segment_data(rd, segment_size, &segments, &num_segments);
+
+    raw_data concatted = concatenate_segments(segments, num_segments);
+
+    if(rd.length == concatted.length)
+    {
+      if(memcmp(rd.data, concatted.data, rd.length))
+        failure = 1;
+    }
+    else
+      failure = 1;
+    if(failure)
+    {
+      printf("failure\n");
+    }
+    else
+      //printf("success\n");
+
+    dealloc(rd.data);
+    dealloc(segments);
+    dealloc(concatted.data);
+  }
+}
+
 int main(int argc, char** argv)
 {
   //purpose of main function- parse arguments and run max argv[1] tests or max errors argv[2] with BER of argv[3].
@@ -712,7 +753,7 @@ int main(int argc, char** argv)
     else if(!strcmp(argv[1], "interleaving"))
       test_interleaving();
     else if(!strcmp(argv[1], "time"))
-      printf("Decoding runs at %f/s\n", time_function());
+      printf("%f\n", time_function());
     else if(!strcmp(argv[1], "sim"))
     {
       if(argc != 6)
@@ -723,6 +764,12 @@ int main(int argc, char** argv)
         return 0;  //return 0 here so as not to print anything else which will prevent interpretation of piped output to float
       }
     }
+    else if(!strcmp(argv[1], "interleave_with_conv"))
+    {
+      //test_interleave_with_conv();
+    }
+    else if(!strcmp(argv[1], "segmentation"))
+      test_segmentation();
   }
   else
     printf("no arguments\n");

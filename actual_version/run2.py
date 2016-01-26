@@ -2,14 +2,15 @@ import subprocess
 import sys
 import time
 
-max_num_tests = "500000"  #string to pass to api_test.exe
+max_num_tests = "50000"  #string to pass to api_test.exe
 max_num_errors = "500"
 num_cores = 4
+starting_SNR = -2.5
 
 #arguments to run.py is csv file for which SNRs to look up BERs to run
 
 if __name__ == "__main__":
-    #run.py input_filename output_filename
+    #run.py input_filename output_filename t
     if(len(sys.argv) != 4):
         print("Needs arguments: input_filename output_filename t")
         exit(0)
@@ -24,7 +25,7 @@ if __name__ == "__main__":
 
     for i in range(0, len(csv_contents), 50):
         csv_contents2.append(csv_contents[i])
-    csv_contents = csv_contents2
+    csv_contents = [line for line in csv_contents2 if float(line[0]) >= starting_SNR]
 
     t = sys.argv[3]
 
